@@ -7,7 +7,6 @@ import json
 import os
 import math
 import requests
-
 from dotenv import load_dotenv
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -3016,7 +3015,6 @@ def health():
 def predict(
     data: PredictionInput
 ):
-
     try:
 
         # ====================================================
@@ -3034,11 +3032,10 @@ def predict(
         # ====================================================
         # 2. LIVE DATA
         # ====================================================
-
         live_data = get_live_data(
             train_number
-        )
-
+        )   
+    
         current = (
             live_data.get(
                 "currentLocation"
@@ -3200,9 +3197,11 @@ def predict(
         # 3. ROUTE
         # ====================================================
 
+
         route_data = get_route_data(
             train_number
         )
+
 
         geojson = (
             route_data.get(
@@ -3387,10 +3386,12 @@ def predict(
 
         try:
 
+
             weather = get_weather(
                 latitude,
                 longitude
             )
+
 
         except Exception as e:
 
@@ -3448,6 +3449,7 @@ def predict(
 
         if next_station:
 
+
             stats, used_segment = (
                 get_segment_statistics(
                     current_station,
@@ -3455,9 +3457,6 @@ def predict(
                 )
             )
 
-            # ====================================================
-            # 7. SCHEDULED SEGMENT
-            # ====================================================
 
             scheduled_segment_minutes = (
                 get_scheduled_segment_minutes(
@@ -3590,9 +3589,11 @@ def predict(
             print("\nMODEL DTYPES:")
             print(features.dtypes)
 
+
             prediction = model.predict(
                 features
             )[0]
+
 
             prediction = max(
                 0.0,
@@ -3624,7 +3625,6 @@ def predict(
         # ====================================================
         # 13. ETA ENGINE
         # ====================================================
-
         upcoming_eta = (
             build_upcoming_eta(
                 live_data,
@@ -3719,7 +3719,7 @@ def predict(
         )
 
         # ====================================================
-        # 14. RESPONSE
+        # 15. RESPONSE
         # ====================================================
 
         return {
@@ -3910,10 +3910,6 @@ def predict(
             "status":
                 "success"
         }
-
-    # ========================================================
-    # EXTERNAL API ERROR
-    # ========================================================
 
     except requests.HTTPError as e:
 
