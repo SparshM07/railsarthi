@@ -212,6 +212,7 @@ def normalize_category_values(values):
 
 
 CATEGORY_MAP = {}
+CATEGORY_NORMALIZED_MAP = {}
 
 for feature in [
     "train",
@@ -229,6 +230,13 @@ for feature in [
             raw_values
         )
     )
+
+    # Keep the exact trained category strings for pandas/LightGBM, while
+    # allowing harmless live-data differences such as case and whitespace.
+    CATEGORY_NORMALIZED_MAP[feature] = {
+        str(value).strip().upper(): value
+        for value in CATEGORY_MAP[feature]
+    }
 
 
 # ============================================================
@@ -295,6 +303,22 @@ print(
     "Historical segments loaded:",
     len(segment_lookup)
 )
+
+
+# Index the actual exported rows once so hierarchical lookups never invent
+# segment statistics and do not repeatedly scan the CSV for each request.
+outgoing_segment_stats = {}
+incoming_segment_stats = {}
+
+for segment, stats in segment_lookup.items():
+
+    if "->" not in segment:
+        continue
+
+    start, end = segment.split("->", 1)
+
+    outgoing_segment_stats.setdefault(start, []).append((segment, stats))
+    incoming_segment_stats.setdefault(end, []).append((segment, stats))
 
 
 # ============================================================
@@ -431,7 +455,7 @@ def parse_datetime(value):
                 tzinfo=IST
             )
 
-        return value
+        return value.astimezone(IST)
 
     try:
 
@@ -456,7 +480,7 @@ def parse_datetime(value):
                 tzinfo=IST
             )
 
-        return parsed
+        return parsed.astimezone(IST)
 
     except (
         TypeError,
@@ -1554,6 +1578,71 @@ def get_live_position(
 # HISTORICAL SEGMENT
 # ============================================================
 
+def aggregate_segment_statistics(candidates, lookup_scope):
+    """Aggregate actual segment-stat rows using their observation counts.
+
+    The source CSV has per-segment mean, median, standard deviation and
+    count, rather than raw observations. Mean and standard deviation can be
+    pooled from those values; the returned median is the weighted median of
+    the per-segment medians, which is a transparent approximation rather
+    than an invalid arithmetic average of medians.
+    """
+    valid = [
+        stats for _, stats in candidates
+        if safe_float(stats.get("count"), 0) > 0
+    ]
+
+    total_count = sum(int(stats["count"]) for stats in valid)
+
+    if total_count < MIN_FALLBACK_SEGMENT_SAMPLES:
+        return None
+
+    mean = sum(
+        stats["mean"] * stats["count"]
+        for stats in valid
+    ) / total_count
+
+    # Pooled sample standard deviation, including between-segment variance.
+    if total_count > 1:
+        variance_numerator = sum(
+            max(0, stats["count"] - 1) * (stats["std"] ** 2)
+            + stats["count"] * ((stats["mean"] - mean) ** 2)
+            for stats in valid
+        )
+        std = math.sqrt(variance_numerator / (total_count - 1))
+    else:
+        std = 0.0
+
+    weighted_medians = sorted(
+        (stats["median"], stats["count"])
+        for stats in valid
+    )
+    halfway = total_count / 2
+    cumulative_count = 0
+    median = weighted_medians[-1][0]
+    for candidate_median, count in weighted_medians:
+        cumulative_count += count
+        if cumulative_count >= halfway:
+            median = candidate_median
+            break
+
+    return {
+        "mean": mean,
+        "median": median,
+        "std": std,
+        "count": total_count,
+        "lookup_scope": lookup_scope
+    }
+
+
+def log_historical_statistics(stats):
+    print("MEAN:", stats["mean"])
+    print("MEDIAN:", stats["median"])
+    print("STD:", stats["std"])
+    print("COUNT:", stats["count"])
+    print("SEGMENT STATUS:", stats["lookup_scope"])
+
+
 def get_segment_statistics(
     current_station,
     next_station
@@ -1609,35 +1698,9 @@ def get_segment_statistics(
         MIN_EXACT_SEGMENT_SAMPLES
     ):
 
-        print(
-            "EXACT SEGMENT FOUND"
-        )
-
-        print(
-            "MEAN:",
-            exact["mean"]
-        )
-
-        print(
-            "MEDIAN:",
-            exact["median"]
-        )
-
-        print(
-            "STD:",
-            exact["std"]
-        )
-
-        print(
-            "COUNT:",
-            exact["count"]
-        )
-
-        print(
-            "SEGMENT STATUS: RELIABLE EXACT"
-        )
-
-        return ({**exact, "lookup_scope": "EXACT"}, requested_segment)
+        stats = {**exact, "lookup_scope": "EXACT"}
+        log_historical_statistics(stats)
+        return (stats, requested_segment)
 
     if exact:
 
@@ -1653,206 +1716,39 @@ def get_segment_statistics(
             "EXACT SEGMENT NOT FOUND"
         )
 
-    # A segment ending at the same next station is not a substitute for
-    # CURRENT->NEXT.  It describes a different physical segment and was the
-    # cause of JRO->LAR being incorrectly reported as BINA->LAR.
-    prefix = f"{current_station}->"
-    candidates = []
-
-    for segment, stats in (
-        segment_lookup.items()
-    ):
-
-        if segment == requested_segment or not segment.startswith(prefix):
-
-            continue
-
-        if (
-            stats["count"]
-            <
-            MIN_FALLBACK_SEGMENT_SAMPLES
-        ):
-
-            continue
-
-        candidates.append(
-            (
-                segment,
-                stats
-            )
-        )
-
-    if candidates:
-
-        fallback_segment, fallback_stats = max(
-            candidates,
-            key=lambda item:
-                item[1]["count"]
-        )
-
-        print("CURRENT-STATION FALLBACK SEGMENT:", fallback_segment)
-
-        print(
-            "FALLBACK REASON: another outgoing segment from the "
-            "same current station; it is not the requested segment"
-        )
-
-        print(
-            "MEAN:",
-            fallback_stats["mean"]
-        )
-
-        print(
-            "MEDIAN:",
-            fallback_stats["median"]
-        )
-
-        print(
-            "STD:",
-            fallback_stats["std"]
-        )
-
-        print(
-            "COUNT:",
-            fallback_stats["count"]
-        )
-
-        print(
-            "SEGMENT STATUS: RELIABLE FALLBACK"
-        )
-
-        return (
-            {**fallback_stats, "lookup_scope": "CURRENT_STATION_OUTGOING"},
-            f"CURRENT_STATION_OUTGOING:{fallback_segment}"
-        )
-
-    print(
-        "NO RELIABLE SEGMENT FALLBACK AVAILABLE"
+    current_candidates = outgoing_segment_stats.get(current_station, [])
+    current_stats = aggregate_segment_statistics(
+        current_candidates, "CURRENT_STATION"
     )
+    if current_stats:
+        print("FALLBACK: aggregate historical segments from current station")
+        log_historical_statistics(current_stats)
+        return current_stats, f"CURRENT_STATION:{current_station}->*"
 
-    print(
-        "USING GLOBAL HISTORICAL STATISTICS"
-    )
+    next_candidates = incoming_segment_stats.get(next_station, [])
+    next_stats = aggregate_segment_statistics(next_candidates, "NEXT_STATION")
+    if next_stats:
+        print("FALLBACK: aggregate historical segments ending at next station")
+        log_historical_statistics(next_stats)
+        return next_stats, f"NEXT_STATION:*->{next_station}"
 
-    all_stats = list(
-        segment_lookup.values()
-    )
+    print("NO STATION-LEVEL HISTORICAL FALLBACK AVAILABLE")
+    print("USING GLOBAL HISTORICAL STATISTICS")
 
-    if not all_stats:
+    all_candidates = list(segment_lookup.items())
+
+    if not all_candidates:
 
         raise ValueError(
             "Historical segment statistics "
             "are empty."
         )
 
-    total_count = sum(
-        x["count"]
-        for x in all_stats
-    )
+    stats = aggregate_segment_statistics(all_candidates, "GLOBAL")
+    if stats is None:
+        raise ValueError("Historical segment statistics have insufficient observations.")
 
-    if total_count <= 0:
-
-        total_count = len(
-            all_stats
-        )
-
-    global_mean = (
-
-        sum(
-
-            x["mean"]
-            *
-            max(
-                1,
-                x["count"]
-            )
-
-            for x in all_stats
-
-        )
-
-        /
-        total_count
-    )
-
-    global_median = (
-
-        sum(
-
-            x["median"]
-            *
-            max(
-                1,
-                x["count"]
-            )
-
-            for x in all_stats
-
-        )
-
-        /
-        total_count
-    )
-
-    global_std = (
-
-        sum(
-
-            x["std"]
-            *
-            max(
-                1,
-                x["count"]
-            )
-
-            for x in all_stats
-
-        )
-
-        /
-        total_count
-    )
-
-    stats = {
-
-        "mean":
-            global_mean,
-
-        "median":
-            global_median,
-
-        "std":
-            global_std,
-
-        "count":
-            total_count,
-
-        "lookup_scope": "GLOBAL"
-    }
-
-    print(
-        "MEAN:",
-        stats["mean"]
-    )
-
-    print(
-        "MEDIAN:",
-        stats["median"]
-    )
-
-    print(
-        "STD:",
-        stats["std"]
-    )
-
-    print(
-        "COUNT:",
-        stats["count"]
-    )
-
-    print(
-        "SEGMENT STATUS: GLOBAL"
-    )
+    log_historical_statistics(stats)
 
     return (
         stats,
@@ -2275,10 +2171,15 @@ def prepare_categorical_feature(
     # an exception.
     # --------------------------------------------------------
 
-    values = (
+    raw_values = (
         dataframe[feature]
         .astype(str)
         .str.strip()
+    )
+
+    normalized_categories = CATEGORY_NORMALIZED_MAP.get(feature, {})
+    values = raw_values.map(
+        lambda value: normalized_categories.get(value.upper(), value)
     )
 
     dataframe[feature] = pd.Categorical(
@@ -2292,21 +2193,21 @@ def prepare_categorical_feature(
 
     if unknown_mask.any():
 
-        unknown_values = (
-            values[
+        unseen_values = (
+            raw_values[
                 unknown_mask
             ].tolist()
         )
 
         print(
-            f"WARNING: Unknown categorical "
-            f"value(s) for '{feature}':",
-            unknown_values
+            f"CONTROLLED MODEL CATEGORY FALLBACK: unseen "
+            f"{feature} value(s):",
+            unseen_values
         )
 
         print(
-            f"These values will be treated "
-            f"as missing by LightGBM."
+            "No trained category was invented; LightGBM will receive "
+            "its compatible missing categorical value."
         )
 
 
@@ -2588,11 +2489,11 @@ def build_upcoming_eta(
     # change between the model's absolute next-station estimate and it.
     # It is descriptive and is never added separately to ETA.
     #
-    # ETA = max(now + remaining physical travel time,
-    #           scheduled next arrival + predicted absolute delay).
-    # This reconciles a historical/schedule estimate with the train's live
-    # state and prevents adding an already-incurred delay twice. Progress is
-    # used only when RailRadar supplied it or it was safely derived.
+    # ETA is scheduled next arrival + the model's absolute delay.  Do not add
+    # current_delay (already represented by an absolute-delay prediction), or
+    # use remaining segment time to override that prediction. Progress is
+    # retained as a physical-travel diagnostic and only supplies an ETA when
+    # RailRadar provides no scheduled timestamp at all.
     remaining_segment_minutes = scheduled_segment_minutes * (
         1.0 - progress if segment_progress_reliable else 1.0
     )
@@ -2664,9 +2565,11 @@ def build_upcoming_eta(
         schedule_model_eta = first_scheduled_arrival + timedelta(
             minutes=predicted_delay
         )
-    first_eta = max(
-        live_physical_eta,
-        schedule_model_eta or live_physical_eta
+    first_eta = schedule_model_eta or live_physical_eta
+    eta_method = (
+        "scheduled_arrival_plus_absolute_predicted_delay"
+        if schedule_model_eta
+        else "live_remaining_travel_no_scheduled_arrival"
     )
     first_eta_minutes = max(
         0.0,
@@ -2747,6 +2650,19 @@ def build_upcoming_eta(
             "predicted_arrival":
                 first_eta.isoformat(),
 
+            "eta_diagnostics": {
+                "current_time": now.isoformat(),
+                "scheduled_arrival": (
+                    first_scheduled_arrival.isoformat()
+                    if first_scheduled_arrival else None
+                ),
+                "current_delay_minutes": round(current_delay, 2),
+                "predicted_absolute_delay_minutes": round(predicted_delay, 2),
+                "remaining_scheduled_minutes": round(remaining_segment_minutes, 2),
+                "segment_progress": round(progress, 4),
+                "method": eta_method
+            },
+
             "eta_minutes_from_now":
                 round(
                     first_eta_minutes,
@@ -2756,7 +2672,7 @@ def build_upcoming_eta(
             "confidence": eta_confidence,
 
             "eta_method":
-                "max(live_remaining_travel,schedule_plus_absolute_delay)"
+                eta_method
         }
 
     ]
@@ -3668,30 +3584,31 @@ def predict(
         print("ETA ENGINE")
         print("======================================")
 
+        eta_diagnostics = (
+            upcoming_eta[0].get("eta_diagnostics", {})
+            if upcoming_eta
+            else {}
+        )
+
+        print("CURRENT TIME:", eta_diagnostics.get("current_time"))
+
+        print("SCHEDULED ARRIVAL:", eta_diagnostics.get("scheduled_arrival"))
+
+        print("CURRENT DELAY:", eta_diagnostics.get("current_delay_minutes"))
+
         print(
             "CURRENT SEGMENT PROGRESS:",
-            segment_progress
+            eta_diagnostics.get("segment_progress", segment_progress)
         )
 
         print(
             "REMAINING SCHEDULED MINUTES:",
-            round(
-
-                scheduled_segment_minutes
-                *
-                (
-                    1.0
-                    -
-                    segment_progress
-                ),
-
-                2
-            )
+            eta_diagnostics.get("remaining_scheduled_minutes")
         )
 
         print(
-            "PREDICTED DELAY:",
-            prediction
+            "PREDICTED ABSOLUTE ARRIVAL DELAY:",
+            eta_diagnostics.get("predicted_absolute_delay_minutes", prediction)
         )
 
         print(
@@ -3700,9 +3617,11 @@ def predict(
         )
 
         print(
-            "NEXT STATION ETA:",
+            "PREDICTED NEXT-STATION ARRIVAL:",
             next_station_eta
         )
+
+        print("ETA METHOD:", eta_diagnostics.get("method"))
 
         print(
             "NEXT STATION ETA MINUTES:",
