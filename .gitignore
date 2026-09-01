@@ -1,7 +1,37 @@
+# Secrets — never commit
 .env
+
+# Virtual environments
 venv/
 .venv/
+
+# Python cache
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+
+# OS metadata
 .DS_Store
+Thumbs.db
+
+# Logs
 *.log
+
+# Large dataset files (download separately — too large for git)
+backend/dataset/ir_train.csv
+backend/dataset/ir_test.csv
+backend/dataset/ir_sample_submission.csv
+
+# Trained model binaries (too large; store in model registry or release assets)
+backend/model/champion_model.txt
+backend/model/journey_delay_model.txt
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+
+# pytest / test caches
+.pytest_cache/
+.coverage
+htmlcov/
