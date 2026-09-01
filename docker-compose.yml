@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    container_name: railpulse-ai-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - RAILRADAR_API_KEY=${RAILRADAR_API_KEY:-}
+      - REQUIRE_API_KEY=false
+      - CORS_ORIGINS=*
+      - REQUEST_RATE_LIMIT_PER_MINUTE=120
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health', timeout=3)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3

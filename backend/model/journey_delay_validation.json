@@ -1,0 +1,37 @@
+{
+  "validation_strategy": "Train on 2018-2023; validate on unseen 2024 journeys.",
+  "excluded_for_leakage": [
+    "delay_minutes",
+    "departure_date",
+    "is_delayed",
+    "journey_id",
+    "primary_delay_cause"
+  ],
+  "feature_count": 40,
+  "categorical_features": [
+    "train_type",
+    "season",
+    "zone",
+    "zone_abbr",
+    "source_station_category",
+    "destination_station_category",
+    "traction_type"
+  ],
+  "training_rows": 1285753,
+  "validation_rows": 214247,
+  "best_iteration": 600,
+  "model": {
+    "mae_minutes": 32.061,
+    "rmse_minutes": 47.594,
+    "late_arrival_accuracy": 0.8255,
+    "late_arrival_precision": 0.8153,
+    "late_arrival_recall": 0.979
+  },
+  "median_delay_baseline": {
+    "mae_minutes": 52.398,
+    "rmse_minutes": 67.236,
+    "late_arrival_accuracy": 0.7191,
+    "late_arrival_precision": 0.7191,
+    "late_arrival_recall": 1.0
+  }
+}

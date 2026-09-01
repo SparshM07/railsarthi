@@ -1,0 +1,121 @@
+/* RailPulse AI Custom Styles & Glassmorphism */
+
+.glass-panel {
+  background: rgba(15, 23, 42, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.glass-card {
+  background: rgba(30, 41, 59, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.25s ease-in-out;
+}
+
+.glass-card:hover {
+  border-color: rgba(0, 242, 254, 0.35);
+  transform: translateY(-2px);
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 242, 254, 0.25);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 242, 254, 0.6);
+}
+
+/* Leaflet Map Customization */
+.leaflet-container {
+  background: #080d1a !important;
+  font-family: inherit !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #0f172a !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(0, 242, 254, 0.35) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(12px) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7), 0 0 15px rgba(0, 242, 254, 0.25) !important;
+}
+
+.leaflet-popup-tip {
+  background: #0f172a !important;
+  border: 1px solid rgba(0, 242, 254, 0.35) !important;
+}
+
+/* Train Live Position Pulsing Marker */
+.train-pulse-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.train-pulse-inner {
+  width: 22px;
+  height: 22px;
+  background: #00f2fe;
+  border: 3px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 20px #00f2fe, 0 0 35px #00f2fe;
+  animation: train-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes train-ping {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(0, 242, 254, 0.8);
+  }
+  70% {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 16px rgba(0, 242, 254, 0);
+  }
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(0, 242, 254, 0);
+  }
+}
+
+/* Station Dot Markers on Map */
+.station-dot {
+  width: 12px;
+  height: 12px;
+  background: #0f172a;
+  border: 2.5px solid #00f2fe;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(0, 242, 254, 0.6);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.station-dot:hover {
+  transform: scale(1.4);
+  background: #00f2fe;
+}
+
+.station-dot-active {
+  background: #10b981 !important;
+  border-color: #ffffff !important;
+  box-shadow: 0 0 12px #10b981 !important;
+}
+
+.station-dot-next {
+  background: #f59e0b !important;
+  border-color: #ffffff !important;
+  box-shadow: 0 0 14px #f59e0b !important;
+  animation: pulse 1.5s infinite;
+}

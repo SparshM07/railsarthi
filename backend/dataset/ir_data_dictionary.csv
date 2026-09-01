@@ -1,0 +1,46 @@
+column,type,description
+journey_id,string,Unique journey ID (IR + 8 digits)
+train_number,string,5-digit IR train number
+train_type,category,"Type of train (Vande Bharat, Rajdhani, Mail, Passenger, etc.)"
+departure_date,date,Scheduled departure date (YYYY-MM-DD)
+year,int,Year (2018–2024)
+month,int,Month (1–12)
+day_of_week,int,"Day of week (0=Monday, 6=Sunday)"
+departure_hour,int,Scheduled departure hour (0–23)
+is_weekend,binary,1 if Saturday or Sunday
+is_night_departure,binary,1 if departure between 10pm and 4am
+is_peak_hour,binary,"1 if departure during peak commute hours (6–8am, 5–8pm)"
+is_festival_season,binary,"1 if high-demand festival period (Diwali, Eid, Holi etc.)"
+season,category,Season: Winter/Fog | Summer | Pre-Monsoon | Monsoon | Post-Monsoon | Autumn
+zone,category,"IR administrative zone (e.g. Northern Railway, Eastern Railway)"
+zone_abbr,category,"Zone abbreviation (NR, ER, WR, SR etc.)"
+source_station_category,category,IR category of origin station (A1 > A > B > C > D > E)
+destination_station_category,category,IR category of destination station
+distance_km,int,Total route distance in kilometres
+num_scheduled_stops,int,Number of intermediate scheduled halts
+scheduled_travel_hours,float,Scheduled end-to-end travel time in hours
+track_doubled,binary,1 if most of route is on doubled or quadrupled track
+is_hdn_route,binary,1 if route passes through High Density Network corridor
+traction_type,category,Traction: Electric (25kV AC) | Diesel | Dual
+is_electrified,binary,1 if route is fully electrified (Electric or Dual traction)
+psr_count,int,Number of Permanent Speed Restrictions on the route
+is_circular_route,binary,1 if train operates as a circular or loop service
+is_monsoon_season,binary,1 if departure month is June–September
+is_fog_risk,binary,"1 if fog risk conditions apply (Dec–Feb, morning, fog-prone zone)"
+fog_risk_score,float,"Continuous fog risk score (0–1) based on month, hour, and zone"
+zone_fog_index,float,Historical fog-related delay risk for the zone (0–1)
+zone_congestion_index,float,Route network capacity utilisation index for the zone (0–1)
+season_severity_score,float,"Weather severity index for the month (0–1; 0.90=Aug, 0.25=Mar)"
+loco_age_years,float,Age of the locomotive in years
+coach_age_years,float,Average age of passenger coaches in years
+has_lhb_coaches,binary,1 if train uses modern LHB (Linke-Hofmann-Busch) coaches
+is_rake_shared,binary,1 if the rake (trainset) is shared across multiple services
+maintenance_score,float,"Preventive maintenance quality score (1=poor, 10=excellent)"
+seat_utilisation_pct,float,Passengers boarded as % of seating capacity
+is_overloaded,binary,1 if seat utilisation exceeds 100%
+late_incoming_rake,binary,1 if the incoming rake (previous service) was already running late
+is_special_train,binary,1 if this is a special or seasonal train (not in regular timetable)
+route_historical_ontime_pct,float,Historical on-time arrival % for this route (based on past data)
+primary_delay_cause,category,"[TRAIN SET ONLY] Primary cause of delay or ""On Time"""
+delay_minutes,int,[TRAIN SET ONLY] Actual delay at destination in minutes (0 if on time)
+is_delayed,binary,[TARGET] 1 = train arrived more than 15 minutes late at destination
