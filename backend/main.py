@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 from pathlib import Path
 import time
@@ -117,9 +118,9 @@ runtime_metrics = RuntimeMetrics()
 # MODEL & STATS ARTIFACTS
 # ============================================================
 
-MODEL_PATH = MODEL_DIR / "champion_model.txt"
-FEATURE_CONFIG_PATH = MODEL_DIR / "model_features.json"
-CATEGORIES_PATH = MODEL_DIR / "station_categories.json"
+MODEL_PATH = MODEL_DIR / "champion_model_scheduled_segment_v2.txt"
+FEATURE_CONFIG_PATH = MODEL_DIR / "model_features_scheduled_segment_v2.json"
+CATEGORIES_PATH = MODEL_DIR / "station_categories_scheduled_segment_v2.json"
 SEGMENT_STATS_PATH = MODEL_DIR / "segment_stats.csv"
 JOURNEY_MODEL_PATH = MODEL_DIR / "journey_delay_model.txt"
 JOURNEY_MODEL_CONFIG_PATH = MODEL_DIR / "journey_delay_model_config.json"
@@ -610,6 +611,11 @@ def predict(
                 stats,
                 segment_progress_reliable,
                 position.get("source", ""),
+                previous_delay=previous_train_delay,
+                train_number=train_number,
+                model_container=champion_container,
+                segment_stats_index=segment_stats_index,
+                max_horizon=5,
             )
             if next_station
             else []
@@ -647,7 +653,11 @@ def predict(
                 "std": round(stats["std"], 2),
                 "count": stats["count"],
             },
-            "scheduled_segment_minutes": round(scheduled_segment_minutes, 2),
+            "scheduled_segment_minutes": (
+                round(scheduled_segment_minutes, 2)
+                if (scheduled_segment_minutes is not None and not math.isnan(scheduled_segment_minutes))
+                else None
+            ),
             "previous_train_delay": round(previous_train_delay, 2),
             "weather": {
                 "temperature_c": weather.get("temperature_2m"),
@@ -682,7 +692,15 @@ def predict(
                     {"name": "Current delay", "value": round(current_delay, 1), "unit": "minutes"},
                     {"name": "Historical segment median", "value": round(stats["median"], 1), "unit": "minutes"},
                     {"name": "Previous station delay", "value": round(previous_train_delay, 1), "unit": "minutes"},
-                    {"name": "Scheduled segment", "value": round(scheduled_segment_minutes, 1), "unit": "minutes"},
+                    {
+                        "name": "Scheduled segment",
+                        "value": (
+                            round(scheduled_segment_minutes, 1)
+                            if (scheduled_segment_minutes is not None and not math.isnan(scheduled_segment_minutes))
+                            else None
+                        ),
+                        "unit": "minutes",
+                    },
                     {"name": "Historical sample size", "value": stats["count"], "unit": "observations"},
                 ],
                 "weather_note": "Weather is displayed for context and is not currently a live-model feature.",

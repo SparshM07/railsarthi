@@ -94,10 +94,9 @@ class ChampionModelContainer:
 
     def __init__(self, model_dir: Path | str):
         self.model_dir = Path(model_dir)
-        self.model_path = self.model_dir / "champion_model.txt"
-        self.feature_config_path = self.model_dir / "model_features.json"
-        self.categories_path = self.model_dir / "station_categories.json"
-
+        self.model_path = self.model_dir / "champion_model_scheduled_segment_v2.txt"
+        self.feature_config_path = self.model_dir / "model_features_scheduled_segment_v2.json"
+        self.categories_path = self.model_dir / "station_categories_scheduled_segment_v2.json"
         self._check_files()
         self.model = lgb.Booster(model_file=str(self.model_path))
         self.model_features = self.model.feature_name()

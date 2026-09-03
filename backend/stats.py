@@ -187,25 +187,13 @@ def get_scheduled_segment_minutes(
         next_arrival = parse_datetime(next_stop.get("scheduledArrival"))
 
     if current_departure and next_arrival:
-        if next_arrival < current_departure:
+        while next_arrival < current_departure:
             next_arrival += timedelta(days=1)
         minutes = (next_arrival - current_departure).total_seconds() / 60.0
         if minutes >= 0:
             return max(0.0, minutes)
 
-    if current_stop and next_stop:
-        try:
-            d1 = safe_float(current_stop.get("distance"), 0.0)
-            d2 = safe_float(next_stop.get("distance"), 0.0)
-            distance_km = max(0.0, d2 - d1)
-            train_info = live_data.get("train", {}) or {}
-            avg_speed = safe_float(train_info.get("avgSpeed"), 55.0)
-            if avg_speed > 0 and distance_km > 0:
-                return (distance_km / avg_speed) * 60.0
-        except Exception:
-            pass
-
-    return 30.0
+    return float("nan")
 
 
 def get_previous_station_delay(live_data: dict[str, Any], current_station: str) -> float:

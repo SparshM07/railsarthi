@@ -1,0 +1,15 @@
+[
+  "train",
+  "station",
+  "next_station",
+  "current_arr_delay",
+  "scheduled_segment_minutes",
+  "past_segment_mean",
+  "past_segment_median",
+  "past_segment_std",
+  "past_segment_count",
+  "day_of_week",
+  "month",
+  "is_weekend",
+  "previous_train_delay"
+]
