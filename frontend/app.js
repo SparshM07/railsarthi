@@ -449,7 +449,7 @@ function renderMapRoute(data) {
     const label = `LIVE • ${data.current_station_name || data.current_station || "Train location"} • ${Math.round(data.current_delay_minutes || 0)} min delay`;
     const trainIcon = L.divIcon({
       className: "train-pulse-icon",
-      html: `<div class="train-location-label">${escapeHtml(label)}</div><div class="train-pulse-inner"></div>`,
+      html: `<div class="train-location-label">${escapeHtml(label)}</div><div class="train-pulse-inner"></div><div class="train-shape" aria-label="Live train location"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3l2 2v1h-3l-2-2h-6l-2 2H4v-1l2-2a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3Zm0 3v6h12V6H6Zm2 8a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Zm8 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z" /></svg></div>`,
       // The pulse dot is flex-centred in this icon. Anchor on that centre so
       // the visual train sits exactly on the route coordinate.
       iconSize: [250, 62],
@@ -486,7 +486,11 @@ function escapeHtml(value) {
 function updateTrainLabelVisibility() {
   if (!map || !trainMarker) return;
   const markerElement = trainMarker.getElement();
-  if (markerElement) markerElement.classList.toggle("train-label-visible", map.getZoom() >= 8);
+  if (markerElement) {
+    const closeZoom = map.getZoom() >= 8;
+    markerElement.classList.toggle("train-label-visible", closeZoom);
+    markerElement.classList.toggle("train-shape-visible", closeZoom);
+  }
 }
 
 // Render Timeline of Stations
