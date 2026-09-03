@@ -41,7 +41,7 @@ function formatDelay(minutes) {
   if (totalMinutes < 60) return `${totalMinutes} min`;
   const hours = Math.floor(totalMinutes / 60);
   const remainder = totalMinutes % 60;
-  return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
+  return `${String(hours).padStart(2, "0")}:${String(remainder).padStart(2, "0")} hrs`;
 }
 
 function alertsEnabled() {
