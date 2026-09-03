@@ -36,6 +36,14 @@ function showToast(message, tone = "info") {
   showToast.timer = window.setTimeout(() => toast.classList.remove("app-toast-visible"), 5000);
 }
 
+function formatDelay(minutes) {
+  const totalMinutes = Math.max(0, Math.round(Number(minutes) || 0));
+  if (totalMinutes < 60) return `${totalMinutes} min`;
+  const hours = Math.floor(totalMinutes / 60);
+  const remainder = totalMinutes % 60;
+  return remainder ? `${hours}h ${remainder}m` : `${hours}h`;
+}
+
 function alertsEnabled() {
   return localStorage.getItem("railpulse-alerts") === "enabled" && Notification.permission === "granted";
 }
@@ -342,8 +350,8 @@ function renderPredictionResults(data) {
   // 4-Card HUD
   const predDelay = data.predicted_delay_minutes ?? 0;
   const addDelay = data.additional_predicted_delay_minutes ?? 0;
-  document.getElementById("hud-predicted-delay").innerHTML = `${predDelay} <span class="text-sm font-normal text-slate-400">min</span>`;
-  document.getElementById("hud-delay-delta").textContent = addDelay > 0 ? `+${addDelay}m vs current delay` : "No additional delay predicted";
+  document.getElementById("hud-predicted-delay").textContent = formatDelay(predDelay);
+  document.getElementById("hud-delay-delta").textContent = addDelay > 0 ? `+${formatDelay(addDelay)} vs current delay` : "No additional delay predicted";
 
   const confidence = data.eta_confidence || "MEDIUM";
   const confElem = document.getElementById("hud-confidence");
