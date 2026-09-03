@@ -115,7 +115,8 @@ button:focus-visible, input:focus-visible, select:focus-visible {
 
 .train-location-label {
   position: absolute;
-  bottom: 31px;
+  /* Keep the label clearly above the 34px close-zoom train marker. */
+  bottom: 55px;
   left: 50%;
   width: max-content;
   max-width: 230px;
@@ -132,6 +133,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   text-align: center;
   white-space: normal;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  z-index: 2;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.18s ease, transform 0.18s ease;
