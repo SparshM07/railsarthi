@@ -80,6 +80,7 @@ Configuration is read from environment variables and from `backend/.env` (or a p
 | `APP_API_KEY` | unset | Expected value of `X-API-Key` when `REQUIRE_API_KEY=true`; startup fails if it is missing. |
 | `CORS_ORIGINS` | `*` | Comma-separated allowed origins, for example `https://dashboard.example.com,http://localhost:3000`. |
 | `REQUEST_RATE_LIMIT_PER_MINUTE` | `120` | Maximum requests per client per rolling minute for protected routes. |
+| `JOURNEY_MODEL_URL` | unset | HTTPS release-asset URL used to download the optional ignored journey model at startup. |
 
 Example `.env`:
 
@@ -92,6 +93,8 @@ REQUEST_RATE_LIMIT_PER_MINUTE=120
 ```
 
 Restart Uvicorn after changing environment values. Check `/health` to see `provider_mode` (`LIVE` or `SIMULATION_FALLBACK`) and whether the journey model is loaded.
+
+To serve the optional journey simulator in a deployment, upload `journey_delay_model.txt` as a private/public release asset or to a model registry and set `JOURNEY_MODEL_URL` to its HTTPS download URL. The app downloads it only when the local artifact is absent; `/health` reports its artifact status. Do not commit the binary or credentials.
 
 The bundled browser frontend does not send an API-key header. Keep `REQUIRE_API_KEY=false` for the dashboard as-is, or update the frontend/reverse proxy to inject `X-API-Key` before enabling authentication.
 
@@ -192,6 +195,8 @@ python -m unittest discover -s tests -v
 ```
 
 The tests cover request validation, endpoint behavior, mocked providers, journey feature preparation, ETA logic, caching, rate limiting, and authentication. Provider calls are mocked, so the suite does not require a RailRadar key.
+
+GitHub Actions runs this suite on Ubuntu, macOS, and Windows. It also verifies that the LightGBM model has LF line endings, preventing Windows checkouts from reintroducing the model-loading issue.
 
 ## Docker
 

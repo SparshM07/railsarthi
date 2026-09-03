@@ -135,6 +135,9 @@ class ApiEndpointTests(unittest.TestCase):
             self.assertIn("upcoming_stations", data)
             self.assertIn("weather", data)
             self.assertIn("eta_confidence", data)
+            self.assertIn("prediction_explanation", data)
+            self.assertEqual(len(data["prediction_explanation"]["factors"]), 5)
+            self.assertEqual(data["data_freshness"]["provider_mode"], "SIMULATION_FALLBACK")
 
     def test_predict_invalid_train_number(self):
         response = self.client.post("/predict", json={"train": 0})

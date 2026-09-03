@@ -124,6 +124,35 @@ SEGMENT_STATS_PATH = MODEL_DIR / "segment_stats.csv"
 JOURNEY_MODEL_PATH = MODEL_DIR / "journey_delay_model.txt"
 JOURNEY_MODEL_CONFIG_PATH = MODEL_DIR / "journey_delay_model_config.json"
 JOURNEY_MODEL_METRICS_PATH = MODEL_DIR / "journey_delay_validation.json"
+JOURNEY_MODEL_URL = os.getenv("JOURNEY_MODEL_URL", "").strip()
+
+
+def install_journey_model_if_configured() -> str:
+    """Install the optional journey model from a configured HTTPS release URL."""
+    if JOURNEY_MODEL_PATH.exists():
+        return "installed"
+    if not JOURNEY_MODEL_URL:
+        return "not_configured"
+    if not JOURNEY_MODEL_URL.startswith("https://"):
+        logger.warning("Journey model download rejected: JOURNEY_MODEL_URL must use HTTPS.")
+        return "invalid_url"
+    try:
+        response = requests.get(JOURNEY_MODEL_URL, timeout=(5, 90), stream=True)
+        response.raise_for_status()
+        temporary_path = JOURNEY_MODEL_PATH.with_suffix(".download")
+        with open(temporary_path, "wb") as output:
+            for chunk in response.iter_content(chunk_size=1024 * 1024):
+                if chunk:
+                    output.write(chunk)
+        temporary_path.replace(JOURNEY_MODEL_PATH)
+        logger.info("Journey model downloaded from configured release asset.")
+        return "downloaded"
+    except (OSError, requests.RequestException) as exc:
+        logger.warning("Journey model download failed: %s", exc)
+        return "download_failed"
+
+
+JOURNEY_MODEL_ARTIFACT_STATUS = install_journey_model_if_configured()
 
 champion_container = ChampionModelContainer(MODEL_DIR)
 model = champion_container.model
@@ -164,13 +193,16 @@ def get_live_data(train_number: int) -> dict[str, Any]:
     """Retrieve live train data from RailRadar if key is available, else fallback to simulator."""
     if RAILRADAR_API_KEY and RAILRADAR_API_KEY != "test-key" and not RAILRADAR_API_KEY.startswith("your_"):
         try:
-            return fetch_railradar_live(
+            result = fetch_railradar_live(
                 train_number, RAILRADAR_API_KEY, HTTP_SESSION, provider_cache, runtime_metrics
             )
+            result["_provider_mode"] = "LIVE"
+            return result
         except Exception as e:
             logger.warning("Live RailRadar fetch failed for train %d (%s); using resilient simulator", train_number, e)
     
     live_sim, _ = generate_simulated_train_data(train_number)
+    live_sim["_provider_mode"] = "SIMULATION_FALLBACK"
     return live_sim
 
 
@@ -178,13 +210,16 @@ def get_route_data(train_number: int) -> dict[str, Any]:
     """Retrieve route data from RailRadar if key is available, else fallback to simulator."""
     if RAILRADAR_API_KEY and RAILRADAR_API_KEY != "test-key" and not RAILRADAR_API_KEY.startswith("your_"):
         try:
-            return fetch_railradar_route(
+            result = fetch_railradar_route(
                 train_number, RAILRADAR_API_KEY, HTTP_SESSION, provider_cache, runtime_metrics
             )
+            result["_provider_mode"] = "LIVE"
+            return result
         except Exception as e:
             logger.warning("Route RailRadar fetch failed for train %d (%s); using resilient simulator", train_number, e)
     
     _, route_sim = generate_simulated_train_data(train_number)
+    route_sim["_provider_mode"] = "SIMULATION_FALLBACK"
     return route_sim
 
 
@@ -350,12 +385,13 @@ def list_trains():
 
 @app.get("/health")
 def health():
-    provider_mode = "LIVE" if (RAILRADAR_API_KEY and not RAILRADAR_API_KEY.startswith("your_")) else "SIMULATION_FALLBACK"
+    provider_mode = "LIVE_READY" if (RAILRADAR_API_KEY and not RAILRADAR_API_KEY.startswith("your_")) else "SIMULATION_FALLBACK"
     return {
         "status": "healthy",
         "model": MODEL_PATH.name,
         "features": MODEL_FEATURES,
         "journey_model_loaded": journey_model is not None,
+        "journey_model_artifact_status": JOURNEY_MODEL_ARTIFACT_STATUS,
         "provider_mode": provider_mode,
         "provider_cache": provider_cache.snapshot(),
         "request_rate_limit_per_minute": REQUEST_RATE_LIMIT_PER_MINUTE,
@@ -409,6 +445,7 @@ def predict(
 
         # 1. Fetch live train feed and extract halt information
         live_data = get_live_data(train_number)
+        data_provider_mode = live_data.pop("_provider_mode", "SIMULATION_FALLBACK")
         current = live_data.get("currentLocation") or {}
 
         current_station = (
@@ -449,6 +486,8 @@ def predict(
 
         # 2. Fetch route geometry and align current/next stations to true route stops
         route_data = get_route_data(train_number)
+        route_provider_mode = route_data.pop("_provider_mode", "SIMULATION_FALLBACK")
+        provider_mode = "LIVE" if data_provider_mode == route_provider_mode == "LIVE" else "SIMULATION_FALLBACK"
         route_stops = route_data.get("stops", [])
 
         current_index = find_route_index(route_stops, current_station)
@@ -629,6 +668,25 @@ def predict(
             "eta_confidence": (
                 upcoming_eta[0].get("confidence") if upcoming_eta else "LOW"
             ),
+            "data_freshness": {
+                "provider_mode": provider_mode,
+                "generated_at": now.isoformat(),
+                "refresh_recommended_seconds": 15,
+            },
+            "prediction_explanation": {
+                "summary": (
+                    f"Prediction starts from the current {round(current_delay, 1)} minute delay and "
+                    f"uses {stats['count']} historical observations for the selected segment."
+                ),
+                "factors": [
+                    {"name": "Current delay", "value": round(current_delay, 1), "unit": "minutes"},
+                    {"name": "Historical segment median", "value": round(stats["median"], 1), "unit": "minutes"},
+                    {"name": "Previous station delay", "value": round(previous_train_delay, 1), "unit": "minutes"},
+                    {"name": "Scheduled segment", "value": round(scheduled_segment_minutes, 1), "unit": "minutes"},
+                    {"name": "Historical sample size", "value": stats["count"], "unit": "observations"},
+                ],
+                "weather_note": "Weather is displayed for context and is not currently a live-model feature.",
+            },
             "upcoming_stations": upcoming_eta,
             "route_geometry": route_data.get("geojson"),
             "model": {

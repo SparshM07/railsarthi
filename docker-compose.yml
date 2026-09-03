@@ -8,6 +8,7 @@ services:
       - "8000:8000"
     environment:
       - RAILRADAR_API_KEY=${RAILRADAR_API_KEY:-}
+      - JOURNEY_MODEL_URL=${JOURNEY_MODEL_URL:-}
       - REQUIRE_API_KEY=false
       - CORS_ORIGINS=*
       - REQUEST_RATE_LIMIT_PER_MINUTE=120

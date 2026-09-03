@@ -13,6 +13,7 @@ let currentTrainData = null;
 let autoRefreshTimer = null;
 let isAutoRefreshActive = true;
 let availableCatalog = [];
+let lastAlertedDelay = null;
 
 // DOM Elements
 const trainInput = document.getElementById("train-input");
@@ -23,6 +24,43 @@ const toggleAutoRefresh = document.getElementById("toggle-auto-refresh");
 const systemStatusBadge = document.getElementById("system-status-badge");
 const providerModeText = document.getElementById("provider-mode-text");
 const btnRefresh = document.getElementById("btn-refresh");
+const alertButton = document.getElementById("btn-enable-alerts");
+
+function showToast(message, tone = "info") {
+  const toast = document.getElementById("app-toast");
+  if (!toast) return;
+  toast.textContent = message;
+  toast.className = `app-toast app-toast-${tone} app-toast-visible`;
+  window.clearTimeout(showToast.timer);
+  showToast.timer = window.setTimeout(() => toast.classList.remove("app-toast-visible"), 5000);
+}
+
+function alertsEnabled() {
+  return localStorage.getItem("railpulse-alerts") === "enabled" && Notification.permission === "granted";
+}
+
+function refreshAlertButton() {
+  if (!alertButton) return;
+  const enabled = alertsEnabled();
+  alertButton.textContent = enabled ? "Alerts enabled" : "Enable alerts";
+  alertButton.setAttribute("aria-pressed", String(enabled));
+}
+
+async function enableAlerts() {
+  if (!("Notification" in window)) {
+    showToast("Browser notifications are not supported here.", "warning");
+    return;
+  }
+  const permission = await Notification.requestPermission();
+  if (permission === "granted") {
+    localStorage.setItem("railpulse-alerts", "enabled");
+    showToast("Delay alerts enabled for this browser.", "success");
+  } else {
+    localStorage.removeItem("railpulse-alerts");
+    showToast("Notifications were not enabled. You can change this in browser settings.", "warning");
+  }
+  refreshAlertButton();
+}
 
 // Initialize application
 document.addEventListener("DOMContentLoaded", async () => {
@@ -30,6 +68,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   initClock();
   initTabs();
   initMap();
+  refreshAlertButton();
+  alertButton?.addEventListener("click", enableAlerts);
   await loadTrainCatalog();
   await checkHealth();
   await executePrediction(12919); // Default train
@@ -159,7 +199,7 @@ async function checkHealth() {
     if (res.ok) {
       const data = await res.json();
       if (providerModeText) {
-        providerModeText.textContent = data.provider_mode === "LIVE" ? "🟢 LIVE RAILRADAR" : "🟡 RESILIENT SIMULATOR";
+        providerModeText.textContent = data.provider_mode === "LIVE_READY" ? "🟢 LIVE PROVIDER READY" : "🟡 SIMULATION MODE";
       }
     }
   } catch (e) {
@@ -226,7 +266,7 @@ async function executePrediction(trainNumber, isBackground = false) {
 
     if (!res.ok) {
       const err = await res.json();
-      alert(`Prediction error: ${err.detail || "Unable to fetch train prediction"}`);
+      showToast(`Prediction error: ${err.detail || "Unable to fetch train prediction"}`, "error");
       return;
     }
 
@@ -235,6 +275,7 @@ async function executePrediction(trainNumber, isBackground = false) {
     renderPredictionResults(data);
   } catch (error) {
     console.error("API error:", error);
+    if (!isBackground) showToast("Unable to reach the prediction service. Please try again.", "error");
   } finally {
     if (!isBackground && btnPredict) {
       btnPredict.disabled = false;
@@ -246,6 +287,8 @@ async function executePrediction(trainNumber, isBackground = false) {
 
 // Render Results on UI
 function renderPredictionResults(data) {
+  renderPredictionExplanation(data);
+  notifyOnDelayChange(data);
   // Hero Section
   document.getElementById("hero-train-number").textContent = `#${data.train}`;
   document.getElementById("hero-train-name").textContent = data.train_name || `Express #${data.train}`;
@@ -305,6 +348,49 @@ function renderPredictionResults(data) {
   renderStationsTimeline(data.upcoming_stations || []);
 
   if (window.lucide) window.lucide.createIcons();
+}
+
+function renderPredictionExplanation(data) {
+  const explanation = data.prediction_explanation || {};
+  const freshness = data.data_freshness || {};
+  const summary = document.getElementById("prediction-summary");
+  const freshnessElement = document.getElementById("data-freshness");
+  const factors = document.getElementById("prediction-factors");
+  const weatherNote = document.getElementById("prediction-weather-note");
+  if (summary) summary.textContent = explanation.summary || "Explanation unavailable for this prediction.";
+  if (freshnessElement) {
+    const live = freshness.provider_mode === "LIVE";
+    freshnessElement.textContent = live ? "● Live provider data" : "● Simulated fallback data";
+    freshnessElement.className = `text-xs font-mono px-2 py-1 rounded border ${live ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-amber-500/10 border-amber-500/30 text-amber-400"}`;
+  }
+  if (factors) {
+    factors.replaceChildren();
+    (explanation.factors || []).forEach((factor) => {
+      const item = document.createElement("div");
+      item.className = "rounded-lg bg-cyber-bg/70 border border-white/5 p-2";
+      const label = document.createElement("div");
+      label.className = "text-[10px] text-slate-500 uppercase";
+      label.textContent = factor.name;
+      const value = document.createElement("div");
+      value.className = "text-sm font-mono text-slate-200";
+      value.textContent = `${factor.value} ${factor.unit || ""}`;
+      item.append(label, value);
+      factors.appendChild(item);
+    });
+  }
+  if (weatherNote) weatherNote.textContent = explanation.weather_note || "";
+}
+
+function notifyOnDelayChange(data) {
+  const delay = Number(data.predicted_delay_minutes || 0);
+  const significantChange = lastAlertedDelay !== null && Math.abs(delay - lastAlertedDelay) >= 10;
+  const newlySevere = lastAlertedDelay !== null && lastAlertedDelay < 30 && delay >= 30;
+  if (alertsEnabled() && (significantChange || newlySevere)) {
+    new Notification(`Train ${data.train}: delay update`, {
+      body: `Predicted delay is now ${delay.toFixed(0)} minutes. Next: ${data.next_station_name || data.next_station || "destination"}.`,
+    });
+  }
+  lastAlertedDelay = delay;
 }
 
 // Render Map Elements with Stations
@@ -533,7 +619,7 @@ async function runJourneySimulation() {
 
     if (!res.ok) {
       const err = await res.json();
-      alert(`Journey Model Error: ${JSON.stringify(err.detail)}`);
+      showToast(`Journey model: ${typeof err.detail === "string" ? err.detail : "invalid input"}`, "error");
       return;
     }
 

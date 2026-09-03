@@ -1,6 +1,7 @@
 """Offline regression checks for business logic that must not call providers."""
 
 import os
+from pathlib import Path
 import unittest
 from datetime import datetime, timezone
 
@@ -22,6 +23,10 @@ class PredictionInputTests(unittest.TestCase):
         for train in (0, -1, 100000):
             with self.assertRaises(Exception):
                 PredictionInput(train=train)
+
+    def test_champion_model_uses_lf_line_endings(self):
+        model_path = Path(__file__).resolve().parents[1] / "backend" / "model" / "champion_model.txt"
+        self.assertNotIn(b"\r\n", model_path.read_bytes())
 
 
 class HistoricalStatisticsTests(unittest.TestCase):
