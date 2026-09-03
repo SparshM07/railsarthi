@@ -9,6 +9,7 @@ let map = null;
 let trainMarker = null;
 let routePolyline = null;
 let stationMarkersLayer = null;
+let renderedRouteSignature = null;
 let currentTrainData = null;
 let autoRefreshTimer = null;
 let isAutoRefreshActive = true;
@@ -134,7 +135,24 @@ function initMap() {
     center: [23.5937, 78.9629],
     zoom: 5,
     zoomControl: true,
+    preferCanvas: true,
+    zoomSnap: 0.25,
+    zoomDelta: 0.5,
+    wheelPxPerZoomLevel: 90,
+    inertia: true,
+    inertiaDeceleration: 2500,
+    tap: true,
+    touchZoom: true,
   });
+
+  // A page scroll should not unexpectedly zoom the map. Users can scroll the
+  // map when it is focused, while touch gestures remain enabled on mobile.
+  map.scrollWheelZoom.disable();
+  mapElement.addEventListener("mouseenter", () => map.scrollWheelZoom.enable());
+  mapElement.addEventListener("mouseleave", () => map.scrollWheelZoom.disable());
+  mapElement.addEventListener("focusin", () => map.scrollWheelZoom.enable());
+  mapElement.addEventListener("focusout", () => map.scrollWheelZoom.disable());
+  map.on("zoomend", updateTrainLabelVisibility);
 
   // Free Esri Dark Gray Base (No API key required, zero watermark)
   L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}", {
@@ -403,7 +421,9 @@ function renderMapRoute(data) {
   const lon = data.position?.longitude;
 
   // Draw GeoJSON Route or Polyline
-  if (data.route_geometry && data.route_geometry.geometry) {
+  const routeCoordinates = data.route_geometry?.geometry?.coordinates;
+  const routeSignature = routeCoordinates ? `${data.train}:${routeCoordinates.length}:${JSON.stringify(routeCoordinates[0])}:${JSON.stringify(routeCoordinates.at(-1))}` : null;
+  if (routeCoordinates && routeSignature !== renderedRouteSignature) {
     if (routePolyline) map.removeLayer(routePolyline);
 
     routePolyline = L.geoJSON(data.route_geometry, {
@@ -413,8 +433,8 @@ function renderMapRoute(data) {
         opacity: 0.9,
       },
     }).addTo(map);
-
     map.fitBounds(routePolyline.getBounds(), { padding: [40, 40] });
+    renderedRouteSignature = routeSignature;
   }
 
   // Draw Station Markers along the upcoming list
@@ -426,28 +446,45 @@ function renderMapRoute(data) {
 
   // Train Marker
   if (lat && lon) {
+    const label = `LIVE • ${data.current_station_name || data.current_station || "Train location"} • ${Math.round(data.current_delay_minutes || 0)} min delay`;
     const trainIcon = L.divIcon({
       className: "train-pulse-icon",
-      html: '<div class="train-pulse-inner"></div>',
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
+      html: `<div class="train-location-label">${escapeHtml(label)}</div><div class="train-pulse-inner"></div>`,
+      iconSize: [250, 62],
+      iconAnchor: [125, 50],
     });
 
     if (trainMarker) {
       trainMarker.setLatLng([lat, lon]);
+      trainMarker.setIcon(trainIcon);
     } else {
       trainMarker = L.marker([lat, lon], { icon: trainIcon }).addTo(map);
     }
 
-    trainMarker.bindPopup(`
+    const popup = `
       <div class="p-2.5 font-sans">
         <div class="font-bold text-cyber-teal text-sm">🚆 #${data.train} ${data.train_name || ""}</div>
         <div class="text-xs text-slate-200 mt-1">Current Delay: <b class="text-amber-400">${data.current_delay_minutes} mins</b></div>
         <div class="text-xs text-slate-300 mt-0.5">Segment Progress: <b>${Math.round((data.segment_progress || 0) * 100)}%</b></div>
         <div class="text-[11px] text-slate-400 mt-1">Position Source: ${data.position?.source || "GPS Interpolated"}</div>
       </div>
-    `);
+    `;
+    if (trainMarker.getPopup()) trainMarker.setPopupContent(popup);
+    else trainMarker.bindPopup(popup);
+    updateTrainLabelVisibility();
   }
+}
+
+function escapeHtml(value) {
+  const element = document.createElement("div");
+  element.textContent = String(value);
+  return element.innerHTML;
+}
+
+function updateTrainLabelVisibility() {
+  if (!map || !trainMarker) return;
+  const markerElement = trainMarker.getElement();
+  if (markerElement) markerElement.classList.toggle("train-label-visible", map.getZoom() >= 8);
 }
 
 // Render Timeline of Stations

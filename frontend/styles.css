@@ -113,6 +113,35 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   animation: train-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
 
+.train-location-label {
+  position: absolute;
+  bottom: 31px;
+  left: 50%;
+  width: max-content;
+  max-width: 230px;
+  transform: translateX(-50%) translateY(4px);
+  padding: 5px 8px;
+  border: 1px solid rgba(0, 242, 254, 0.55);
+  border-radius: 7px;
+  background: rgba(8, 13, 26, 0.94);
+  color: #dffcff;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  white-space: normal;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.train-label-visible .train-location-label {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 @keyframes train-ping {
   0% {
     transform: scale(0.9);
