@@ -80,7 +80,8 @@ def nearest_route_index(
 def get_station_coordinates(route_data: dict[str, Any]) -> dict[str, list[float]]:
     """Extract a mapping of stationCode -> [lon, lat] from route data stops."""
     result: dict[str, list[float]] = {}
-    for stop in route_data.get("stops", []):
+    stops = route_data.get("stops") or route_data.get("route") or []
+    for stop in stops:
         if not isinstance(stop, dict):
             continue
         code = stop.get("code") or stop.get("stationCode") or stop.get("station_code")
@@ -299,6 +300,71 @@ def get_next_station_from_route(
         if code:
             return code, stop
     return None, None
+
+
+def resolve_active_route_segment(
+    route_stops: list[dict[str, Any]],
+    current_station_code: str | None,
+    live_route: list[dict[str, Any]] | None = None,
+    previous_halt_code: str | None = None,
+) -> tuple[int, str, str, str | None, str | None]:
+    """Resolve the active adjacent route segment:
+    (current_index, current_station, current_station_name, next_station, next_station_name).
+
+    Strict Invariants:
+    1. next_station MUST be the immediate next scheduled route station after current_station.
+    2. At terminal station, next_station MUST be None.
+    3. Distant downstream stations (e.g. next passenger halt) must NEVER be selected as next_station.
+    """
+    if not route_stops:
+        raise ValueError("Route stops list is empty.")
+
+    normalized_current = normalize_station_code(current_station_code)
+    current_index = find_route_index(route_stops, normalized_current)
+
+    if current_index is None and previous_halt_code:
+        prev_code = normalize_station_code(previous_halt_code)
+        current_index = find_route_index(route_stops, prev_code)
+
+    if current_index is None:
+        raise ValueError(
+            f"Current station '{current_station_code}' does not identify a valid route stop "
+            f"and previous halt '{previous_halt_code}' is not on the route."
+        )
+
+    # Advance current_index if telemetry route logs confirm downstream departures or arrivals
+    if live_route:
+        for i in range(current_index + 1, len(route_stops)):
+            stop_code = get_stop_code(route_stops[i])
+            live_stop = find_route_stop(live_route, stop_code) or route_stops[i]
+            status = str(live_stop.get("status") or "").strip().lower()
+            if status in {"departed", "passed"}:
+                current_index = i
+            elif status in {"arrived", "halted", "stopped"}:
+                current_index = i
+                break
+            else:
+                break
+
+    current_stop = route_stops[current_index]
+    current_station = get_stop_code(current_stop) or ""
+    current_station_name = get_stop_name(current_stop)
+
+    if current_index < len(route_stops) - 1:
+        next_stop = route_stops[current_index + 1]
+        next_station = get_stop_code(next_stop)
+        next_station_name = get_stop_name(next_stop)
+    else:
+        next_station = None
+        next_station_name = None
+
+    return (
+        current_index,
+        current_station,
+        current_station_name,
+        next_station,
+        next_station_name,
+    )
 
 
 def get_live_position(

@@ -44,7 +44,7 @@ def prepare_categorical_feature(
     unknown_mask = dataframe[feature].isna()
     if unknown_mask.any():
         unseen_values = raw_values[unknown_mask].tolist()
-        logger.info(
+        logger.debug(
             "Controlled model category fallback: unseen %s value(s): %s",
             feature,
             unseen_values,

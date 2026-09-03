@@ -26,7 +26,6 @@ BASE_DIR = Path(__file__).resolve().parent
 DATA_PATH = BASE_DIR / "dataset" / "ir_train.csv"
 MODEL_DIR = BASE_DIR / "model"
 MODEL_PATH = MODEL_DIR / "journey_delay_model.txt"
-CONFIG_PATH = MODEL_DIR / "journey_delay_model_config.json"
 METRICS_PATH = MODEL_DIR / "journey_delay_validation.json"
 
 TARGET = "delay_minutes"
@@ -110,13 +109,6 @@ def main() -> None:
 
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
     model.booster_.save_model(str(MODEL_PATH), num_iteration=model.best_iteration_)
-    CONFIG_PATH.write_text(json.dumps({
-        "features": features,
-        "categorical_features": categorical_features,
-        "categories": categories,
-        "target": TARGET,
-        "late_threshold_minutes": 15,
-    }, indent=2), encoding="utf-8")
     METRICS_PATH.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
 
     print(json.dumps(metrics, indent=2))

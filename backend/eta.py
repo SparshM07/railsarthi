@@ -80,19 +80,24 @@ def build_upcoming_eta(
         logger.warning("ETA Warning: Current station %s not found in route", current_station)
         return []
 
-    next_index = None
-    for i in range(current_index + 1, len(route)):
-        stop = route[i]
-        code = normalize_station_code(
-            stop.get("stationCode") or stop.get("code") or stop.get("station_code")
-        )
-        if code == next_code:
-            next_index = i
-            break
-
-    if next_index is None:
-        logger.warning("ETA Warning: Next station %s not found in route", next_station)
+    if current_index >= len(route) - 1:
+        # At terminal station; no upcoming stops
         return []
+
+    # Invariant: next_station MUST be the immediate next scheduled route station after current_station
+    next_index = current_index + 1
+    immediate_next_code = normalize_station_code(
+        route[next_index].get("stationCode")
+        or route[next_index].get("code")
+        or route[next_index].get("station_code")
+    )
+    if next_code and immediate_next_code and next_code != immediate_next_code:
+        logger.warning(
+            "ETA Warning: next_station %s is not the immediate route stop (%s) after %s; enforcing adjacent route stop",
+            next_station,
+            immediate_next_code,
+            current_station,
+        )
 
     upcoming = route[next_index:]
     if not upcoming:

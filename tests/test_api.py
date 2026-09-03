@@ -8,11 +8,10 @@ import requests
 
 from fastapi.testclient import TestClient
 
-from backend.main import app, request_limiter
+from backend.main import app, journey_model_config, request_limiter
 
 
 BASE_DIR = Path(__file__).resolve().parents[1]
-CONFIG_PATH = BASE_DIR / "backend" / "model" / "journey_delay_model_config.json"
 DATA_PATH = BASE_DIR / "backend" / "dataset" / "ir_train.csv"
 
 
@@ -74,6 +73,7 @@ SAMPLE_WEATHER_DATA = {
 class ApiEndpointTests(unittest.TestCase):
     def setUp(self):
         self.client = TestClient(app)
+        self.client.get("/")
         request_limiter._requests.clear()
 
     def test_root_endpoint(self):
@@ -81,7 +81,7 @@ class ApiEndpointTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertIn("version", data)
-        self.assertEqual(data["service"], "Railway Delay Prediction API")
+        self.assertEqual(data["service"], "RailsArthi Railway Intelligence API")
         self.assertIn("X-Request-ID", response.headers)
 
     def test_health_endpoint(self):
@@ -89,7 +89,7 @@ class ApiEndpointTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data["status"], "healthy")
-        self.assertEqual(data["model"], "champion_model.txt")
+        self.assertEqual(data["service"], "RailsArthi")
         self.assertTrue(data["journey_model_loaded"])
         self.assertIn("provider_cache", data)
 
@@ -102,11 +102,11 @@ class ApiEndpointTests(unittest.TestCase):
 
     def test_predict_journey_success(self):
         import pandas as pd
-        config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        self.assertIsNotNone(journey_model_config)
         row = pd.read_csv(DATA_PATH, nrows=1).iloc[0]
         features = {
             name: row[name].item() if hasattr(row[name], "item") else row[name]
-            for name in config["features"]
+            for name in journey_model_config["features"]
         }
         response = self.client.post("/predict-journey", json={"features": features})
         self.assertEqual(response.status_code, 200)
@@ -173,14 +173,21 @@ class ApiEndpointTests(unittest.TestCase):
     def test_authentication_enforcement(self):
         with patch("backend.main.REQUIRE_API_KEY", True), \
              patch("backend.main.APP_API_KEY", "secret-key-123"):
-            res_missing = self.client.get("/metrics")
+            fresh_client = TestClient(app)
+            res_missing = fresh_client.get("/metrics")
             self.assertEqual(res_missing.status_code, 401)
 
-            res_wrong = self.client.get("/metrics", headers={"X-API-Key": "wrong-key"})
+            res_wrong = fresh_client.get("/metrics", headers={"X-API-Key": "wrong-key"})
             self.assertEqual(res_wrong.status_code, 401)
 
-            res_valid = self.client.get("/metrics", headers={"X-API-Key": "secret-key-123"})
-            self.assertEqual(res_valid.status_code, 200)
+            res_valid_header = fresh_client.get("/metrics", headers={"X-API-Key": "secret-key-123"})
+            self.assertEqual(res_valid_header.status_code, 200)
+
+            # Verify same-origin session cookie authentication
+            session_client = TestClient(app)
+            session_client.get("/")
+            res_valid_session = session_client.get("/metrics")
+            self.assertEqual(res_valid_session.status_code, 200)
 
 
 if __name__ == "__main__":

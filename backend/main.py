@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import logging
 import math
 import os
 from pathlib import Path
+import secrets
 import time
 from typing import Any
 from uuid import uuid4
 
 from dotenv import load_dotenv
+# pyrefly: ignore [missing-import]
 from fastapi import FastAPI, Header, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
@@ -34,9 +38,10 @@ from backend.geo import (
     haversine,
     nearest_route_index,
     normalize_station_code,
+    resolve_active_route_segment,
     safe_float,
 )
-from backend.journey_model import prepare_journey_model_dataframe
+from backend.journey_model import build_journey_model_metadata, prepare_journey_model_dataframe
 from backend.model_serving import (
     ChampionModelContainer,
     normalize_category_values,
@@ -123,7 +128,6 @@ FEATURE_CONFIG_PATH = MODEL_DIR / "model_features_scheduled_segment_v2.json"
 CATEGORIES_PATH = MODEL_DIR / "station_categories_scheduled_segment_v2.json"
 SEGMENT_STATS_PATH = MODEL_DIR / "segment_stats.csv"
 JOURNEY_MODEL_PATH = MODEL_DIR / "journey_delay_model.txt"
-JOURNEY_MODEL_CONFIG_PATH = MODEL_DIR / "journey_delay_model_config.json"
 JOURNEY_MODEL_METRICS_PATH = MODEL_DIR / "journey_delay_validation.json"
 JOURNEY_MODEL_URL = os.getenv("JOURNEY_MODEL_URL", "").strip()
 
@@ -171,13 +175,14 @@ journey_model: lgb.Booster | None = None
 journey_model_config: dict[str, Any] | None = None
 journey_model_metrics: dict[str, Any] | None = None
 
-if JOURNEY_MODEL_PATH.exists() and JOURNEY_MODEL_CONFIG_PATH.exists():
+if JOURNEY_MODEL_PATH.exists():
     journey_model = lgb.Booster(model_file=str(JOURNEY_MODEL_PATH))
-    with open(JOURNEY_MODEL_CONFIG_PATH, "r", encoding="utf-8") as f:
-        journey_model_config = json.load(f)
     if JOURNEY_MODEL_METRICS_PATH.exists():
         with open(JOURNEY_MODEL_METRICS_PATH, "r", encoding="utf-8") as f:
             journey_model_metrics = json.load(f)
+    journey_model_config = build_journey_model_metadata(
+        journey_model, journey_model_metrics
+    )
     logger.info("Journey delay model loaded successfully.")
 else:
     logger.info("Journey delay model not installed; /predict-journey will be unavailable.")
@@ -255,8 +260,8 @@ def prepare_model_dataframe(data: dict[str, Any]) -> Any:
 # ============================================================
 
 app = FastAPI(
-    title="Railway Delay Prediction API",
-    description="SIH Railway Delay Prediction & Real-Time ETA Intelligence Platform",
+    title="RailsArthi Railway Intelligence API",
+    description="RailsArthi - Indian Railways Delay Prediction & Real-Time ETA Intelligence Platform",
     version="5.1",
 )
 
@@ -324,6 +329,45 @@ if FRONTEND_DIR.exists():
 # SCHEMAS & AUTH
 # ============================================================
 
+SESSION_COOKIE_NAME = "railsarthi_session"
+SESSION_TTL_SECONDS = 86400  # 24 hours
+
+
+def _get_session_secret() -> bytes:
+    key_material = APP_API_KEY or "railsarthi_secure_session_secret_key"
+    return hashlib.sha256(f"railsarthi_session_secret_{key_material}".encode("utf-8")).digest()
+
+
+def create_session_token() -> str:
+    """Generate an HMAC-SHA256 signed session token for same-origin browser clients."""
+    timestamp = int(time.time())
+    nonce = secrets.token_hex(8)
+    payload = f"{timestamp}:{nonce}"
+    signature = hmac.new(_get_session_secret(), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"{payload}:{signature}"
+
+
+def validate_session_token(token: str | None) -> bool:
+    """Validate timestamp and cryptographic signature of a session token."""
+    if not token or not isinstance(token, str):
+        return False
+    parts = token.split(":")
+    if len(parts) != 3:
+        return False
+    timestamp_str, nonce, signature = parts
+    try:
+        timestamp = int(timestamp_str)
+    except ValueError:
+        return False
+    current_time = int(time.time())
+    # Reject expired or future-skewed tokens
+    if current_time - timestamp > SESSION_TTL_SECONDS or timestamp > current_time + 300:
+        return False
+    payload = f"{timestamp_str}:{nonce}"
+    expected_sig = hmac.new(_get_session_secret(), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    return hmac.compare_digest(signature, expected_sig)
+
+
 class PredictionInput(BaseModel):
     train: int = Field(
         ge=1,
@@ -334,18 +378,31 @@ class PredictionInput(BaseModel):
 
 class JourneyPredictionInput(BaseModel):
     features: dict[str, Any] = Field(
-        description="All feature fields from journey_delay_model_config.json."
+        description="All feature fields required by the journey delay model."
     )
 
 
-def require_api_key(x_api_key: str | None = Header(default=None)):
-    """Enforce API-key authentication when REQUIRE_API_KEY is enabled."""
-    is_required = REQUIRE_API_KEY
-    if is_required and x_api_key != APP_API_KEY:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or missing API key.",
-        )
+def require_api_key(
+    request: Request,
+    x_api_key: str | None = Header(default=None),
+):
+    """Enforce API-key or server-signed session authentication when REQUIRE_API_KEY is enabled."""
+    if not REQUIRE_API_KEY:
+        return True
+
+    # 1. Direct API key validation for external clients
+    if x_api_key and APP_API_KEY and hmac.compare_digest(x_api_key, APP_API_KEY):
+        return True
+
+    # 2. Server-signed same-origin session cookie for browser dashboard
+    session_token = request.cookies.get(SESSION_COOKIE_NAME)
+    if session_token and validate_session_token(session_token):
+        return True
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or missing API key or session.",
+    )
 
 
 # ============================================================
@@ -358,21 +415,58 @@ def root(request: Request):
     accept = request.headers.get("accept", "")
     index_file = FRONTEND_DIR / "index.html"
     if "text/html" in accept and index_file.exists():
-        return FileResponse(index_file)
-    return {
-        "status": "online",
-        "service": "Railway Delay Prediction API",
-        "version": "5.1",
-    }
+        response = FileResponse(index_file)
+        session_token = request.cookies.get(SESSION_COOKIE_NAME)
+        if not session_token or not validate_session_token(session_token):
+            response.set_cookie(
+                key=SESSION_COOKIE_NAME,
+                value=create_session_token(),
+                max_age=SESSION_TTL_SECONDS,
+                httponly=True,
+                samesite="lax",
+                path="/",
+            )
+        return response
+
+    response = Response(
+        content=json.dumps({
+            "status": "online",
+            "service": "RailsArthi Railway Intelligence API",
+            "version": "5.1",
+        }),
+        media_type="application/json",
+    )
+    session_token = request.cookies.get(SESSION_COOKIE_NAME)
+    if not session_token or not validate_session_token(session_token):
+        response.set_cookie(
+            key=SESSION_COOKIE_NAME,
+            value=create_session_token(),
+            max_age=SESSION_TTL_SECONDS,
+            httponly=True,
+            samesite="lax",
+            path="/",
+        )
+    return response
 
 
 @app.get("/app")
-def frontend_app():
+def frontend_app(request: Request):
     """Direct route for the frontend dashboard application."""
     index_file = FRONTEND_DIR / "index.html"
     if index_file.exists():
-        return FileResponse(index_file)
-    return HTMLResponse("<h1>Frontend dashboard loading...</h1>")
+        response = FileResponse(index_file)
+        session_token = request.cookies.get(SESSION_COOKIE_NAME)
+        if not session_token or not validate_session_token(session_token):
+            response.set_cookie(
+                key=SESSION_COOKIE_NAME,
+                value=create_session_token(),
+                max_age=SESSION_TTL_SECONDS,
+                httponly=True,
+                samesite="lax",
+                path="/",
+            )
+        return response
+    return HTMLResponse("<h1>RailsArthi dashboard loading...</h1>")
 
 
 @app.get("/trains")
@@ -389,19 +483,21 @@ def health():
     provider_mode = "LIVE_READY" if (RAILRADAR_API_KEY and not RAILRADAR_API_KEY.startswith("your_")) else "SIMULATION_FALLBACK"
     return {
         "status": "healthy",
-        "model": MODEL_PATH.name,
-        "features": MODEL_FEATURES,
-        "journey_model_loaded": journey_model is not None,
-        "journey_model_artifact_status": JOURNEY_MODEL_ARTIFACT_STATUS,
+        "service": "RailsArthi",
+        "version": "5.1",
         "provider_mode": provider_mode,
+        "journey_model_loaded": journey_model is not None,
         "provider_cache": provider_cache.snapshot(),
         "request_rate_limit_per_minute": REQUEST_RATE_LIMIT_PER_MINUTE,
     }
 
 
 @app.get("/metrics")
-def metrics(x_api_key: str | None = Header(default=None)):
-    require_api_key(x_api_key)
+def metrics(
+    request: Request,
+    x_api_key: str | None = Header(default=None),
+):
+    require_api_key(request, x_api_key)
     return {
         "counters": runtime_metrics.snapshot(),
         "provider_cache": provider_cache.snapshot(),
@@ -411,9 +507,10 @@ def metrics(x_api_key: str | None = Header(default=None)):
 @app.post("/predict-journey")
 def predict_journey(
     data: JourneyPredictionInput,
+    request: Request,
     x_api_key: str | None = Header(default=None),
 ):
-    require_api_key(x_api_key)
+    require_api_key(request, x_api_key)
     if journey_model is None or journey_model_config is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -422,26 +519,26 @@ def predict_journey(
 
     frame = prepare_journey_model_dataframe(data.features, journey_model_config)
     predicted_delay = max(0.0, float(journey_model.predict(frame)[0]))
-    threshold = float(journey_model_config["late_threshold_minutes"])
-    response = {
+    threshold = float(journey_model_config.get("late_threshold_minutes", 15.0))
+    result: dict[str, Any] = {
         "predicted_destination_delay_minutes": round(predicted_delay, 2),
         "is_predicted_delayed": predicted_delay > threshold,
         "delay_threshold_minutes": threshold,
-        "model": JOURNEY_MODEL_PATH.name,
     }
     if journey_model_metrics:
-        response["validation"] = journey_model_metrics["model"]
-        response["validation_strategy"] = journey_model_metrics["validation_strategy"]
-    return response
+        result["validation"] = journey_model_metrics
+        result["validation_metrics"] = journey_model_metrics
+    return result
 
 
 @app.post("/predict")
 def predict(
     data: PredictionInput,
+    request: Request,
     x_api_key: str | None = Header(default=None),
 ):
     try:
-        require_api_key(x_api_key)
+        require_api_key(request, x_api_key)
         train_number = int(data.train)
 
         # 1. Fetch live train feed and extract halt information
@@ -449,82 +546,104 @@ def predict(
         data_provider_mode = live_data.pop("_provider_mode", "SIMULATION_FALLBACK")
         current = live_data.get("currentLocation") or {}
 
-        current_station = (
+        raw_current_station = (
             current.get("stationCode")
             or current.get("code")
             or live_data.get("currentStation")
             or live_data.get("stationCode")
         )
-        current_station = normalize_station_code(current_station)
-        current_station_name = current.get("stationName") or live_data.get("currentStationName")
+        raw_current_station = normalize_station_code(raw_current_station)
 
-        next_halt = live_data.get("nextHalt") or {}
-        next_station = (
-            next_halt.get("stationCode")
-            or next_halt.get("code")
-            or live_data.get("nextStation")
+        previous_halt = live_data.get("previousHalt") or {}
+        previous_code = normalize_station_code(
+            previous_halt.get("stationCode") or previous_halt.get("code")
         )
-        next_station = normalize_station_code(next_station)
-        next_station_name = get_stop_name(next_halt)
 
-        if not current_station:
+        if not raw_current_station and not previous_code:
             raise ValueError("Unable to determine current station.")
 
         current_delay = safe_float(
             current.get("delayMinutes"), live_data.get("delayMinutes", 0.0)
         )
 
-        raw_segment_progress = current.get("segmentProgress")
-        if raw_segment_progress is None:
-            raw_segment_progress = live_data.get("segmentProgress")
-        segment_progress_reliable = raw_segment_progress is not None
-        segment_progress = max(0.0, min(1.0, safe_float(raw_segment_progress, 0.0)))
-        segment_progress_source = (
-            "RailRadar segmentProgress"
-            if segment_progress_reliable
-            else "unavailable (conservative 0.0 fallback)"
-        )
-
-        # 2. Fetch route geometry and align current/next stations to true route stops
+        # 2. Fetch authoritative route geometry and stops
         route_data = get_route_data(train_number)
         route_provider_mode = route_data.pop("_provider_mode", "SIMULATION_FALLBACK")
         provider_mode = "LIVE" if data_provider_mode == route_provider_mode == "LIVE" else "SIMULATION_FALLBACK"
-        route_stops = route_data.get("stops", [])
 
-        current_index = find_route_index(route_stops, current_station)
-        if current_index is None:
-            previous_halt = live_data.get("previousHalt") or {}
-            previous_code = normalize_station_code(
-                previous_halt.get("stationCode") or previous_halt.get("code")
-            )
-            previous_index = find_route_index(route_stops, previous_code)
-            if previous_index is not None:
-                current_station = previous_code
-                current_index = previous_index
-                current_station_name = (
-                    get_stop_name(route_stops[current_index]) or current_station_name
-                )
-            else:
-                raise ValueError(
-                    "Current location does not identify a route stop and "
-                    "no valid previous halt is available."
-                )
+        route_stops = route_data.get("stops") or live_data.get("route") or []
+        if len(live_data.get("route", [])) > len(route_stops):
+            route_stops = live_data.get("route", [])
 
-        next_index = find_route_index(route_stops, next_station, current_index + 1)
-        if next_index is None:
-            next_station, next_stop = get_next_station_from_route(
-                route_stops, current_station
-            )
-            next_station_name = get_stop_name(next_stop)
-        else:
-            next_station_name = next_station_name or get_stop_name(route_stops[next_index])
+        if not route_stops:
+            raise ValueError("No route stops available for train.")
+
+        # Ensure live_data["route"] contains route_stops if missing
+        if not live_data.get("route"):
+            live_data["route"] = route_stops
+
+        # Resolve the active adjacent segment with strict invariant enforcement:
+        # next_station MUST be the immediate next scheduled route station after current_station.
+        (
+            current_index,
+            current_station,
+            current_station_name,
+            next_station,
+            next_station_name,
+        ) = resolve_active_route_segment(
+            route_stops,
+            raw_current_station,
+            live_route=live_data.get("route", []),
+            previous_halt_code=previous_code,
+        )
 
         current_station_name = (
-            current_station_name or get_stop_name(route_stops[current_index]) or ""
+            current_station_name
+            or current.get("stationName")
+            or live_data.get("currentStationName")
+            or ""
         )
         next_station_name = next_station_name or ""
 
-        # 3. Position estimation
+        # 3. Segment progress resolution for the active adjacent segment
+        if not next_station:
+            segment_progress = 1.0
+            segment_progress_reliable = True
+            segment_progress_source = "terminal station reached"
+        else:
+            raw_segment_progress = None
+            cur_telemetry_code = normalize_station_code(
+                current.get("stationCode")
+                or current.get("code")
+                or live_data.get("currentStation")
+            )
+            if cur_telemetry_code == current_station:
+                raw_segment_progress = current.get("segmentProgress")
+                if raw_segment_progress is None:
+                    raw_segment_progress = live_data.get("segmentProgress")
+
+            if raw_segment_progress is not None:
+                segment_progress = max(0.0, min(1.0, safe_float(raw_segment_progress, 0.0)))
+                segment_progress_reliable = True
+                segment_progress_source = "RailRadar segmentProgress"
+            else:
+                # Check distance traveled along active segment
+                cur_stop = route_stops[current_index]
+                nxt_stop = route_stops[current_index + 1]
+                cur_dist = safe_float(cur_stop.get("distance"), -1.0)
+                nxt_dist = safe_float(nxt_stop.get("distance"), -1.0)
+                dist_from_last = safe_float(current.get("distanceFromLastStationKm"), -1.0)
+                if dist_from_last >= 0 and cur_dist >= 0 and nxt_dist > cur_dist:
+                    seg_km = nxt_dist - cur_dist
+                    segment_progress = max(0.0, min(1.0, dist_from_last / seg_km))
+                    segment_progress_reliable = True
+                    segment_progress_source = "derived from distance traveled along active segment"
+                else:
+                    segment_progress = 0.0
+                    segment_progress_reliable = False
+                    segment_progress_source = "unavailable (conservative 0.0 fallback)"
+
+        # 4. Position estimation & derivation along adjacent segment
         position = get_live_position(
             live_data, route_data, current_station, next_station, segment_progress
         )
@@ -544,7 +663,7 @@ def predict(
                 route_data, current_station, next_station, latitude, longitude
             )
             if derived_progress is not None:
-                segment_progress = derived_progress
+                segment_progress = max(0.0, min(1.0, derived_progress))
                 segment_progress_reliable = True
                 segment_progress_source = (
                     "derived from RailRadar live coordinates + route geometry"
@@ -707,14 +826,11 @@ def predict(
             },
             "upcoming_stations": upcoming_eta,
             "route_geometry": route_data.get("geojson"),
-            "model": {
-                "type": "LightGBM",
-                "features": MODEL_FEATURES,
-                "weather_used_for_prediction": False,
-                "prediction_skipped": not bool(next_station),
-                "prediction_note": (
+            "prediction": {
+                "available": bool(next_station),
+                "note": (
                     "Terminal station: no next station available; "
-                    "current delay used instead of model prediction."
+                    "current delay maintained."
                     if not next_station
                     else None
                 ),

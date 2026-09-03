@@ -170,13 +170,13 @@ Runs the separately trained destination-delay model. The `features` object must 
 }
 ```
 
-Categorical values must match `backend/model/journey_delay_model_config.json`. Numeric values must be finite. A successful response returns predicted destination delay, the 15-minute late threshold, a boolean `is_predicted_delayed`, model name, and stored validation metadata. If the journey artifacts are absent, the endpoint returns `503`.
+Categorical values must match the categories defined in the journey model. Numeric values must be finite. A successful response returns predicted destination delay, the 15-minute late threshold, a boolean `is_predicted_delayed`, and stored validation metadata. If the journey artifacts are absent, the endpoint returns `503`.
 
 ## Models and data
 
 The live next-station model is `backend/model/champion_model.txt`. Its 13 serving features are listed in `backend/model/model_features.json`; category vocabularies are in `station_categories.json`; historical segment aggregates are in `segment_stats.csv`.
 
-The optional journey model is `journey_delay_model.txt`, with schema and category validation in `journey_delay_model_config.json` and evaluation results in `journey_delay_validation.json`. It is trained with a time-based split: journeys from 2018–2023 are used for training and unseen 2024 journeys for validation. Leakage-prone identifiers, departure date, post-journey cause, and target columns are excluded.
+The optional journey model is `journey_delay_model.txt`, with schema and categories extracted directly from the LightGBM model and evaluation results in `journey_delay_validation.json`. It is trained with a time-based split: journeys from 2018–2023 are used for training and unseen 2024 journeys for validation. Leakage-prone identifiers, departure date, post-journey cause, and target columns are excluded.
 
 The large `backend/dataset/ir_train.csv` and related files are intentionally ignored by Git. To retrain the journey model, place `ir_train.csv` at `backend/dataset/ir_train.csv` and run:
 
@@ -225,7 +225,7 @@ For production, set a restrictive `CORS_ORIGINS`, enable `REQUIRE_API_KEY`, use 
 
 ## Troubleshooting
 
-- `journey_model_loaded` is `false` or `/predict-journey` returns `503`: verify both `backend/model/journey_delay_model.txt` and `journey_delay_model_config.json` exist and are readable.
+- `journey_model_loaded` is `false` or `/predict-journey` returns `503`: verify `backend/model/journey_delay_model.txt` exists and is readable.
 - `/health` reports `SIMULATION_FALLBACK`: `RAILRADAR_API_KEY` is empty, a placeholder, or the live provider failed. This is expected for offline demos.
 - Browser page loads without styling or a map: the frontend loads Tailwind, Leaflet, Lucide, fonts, and map tiles from public CDNs, so allow outbound browser access.
 - `401`: set the `X-API-Key` header to the value of `APP_API_KEY`, or disable `REQUIRE_API_KEY` for local development.

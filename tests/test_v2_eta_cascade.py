@@ -310,6 +310,7 @@ class ProductionEtaCascadeTests(unittest.TestCase):
         from fastapi.testclient import TestClient
         from backend.main import app
         client = TestClient(app)
+        client.get("/")
         response = client.post("/predict", json={"train": 12919})
         self.assertEqual(response.status_code, 200)
         data = response.json()
