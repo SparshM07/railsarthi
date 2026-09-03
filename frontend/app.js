@@ -136,9 +136,9 @@ function initMap() {
     zoom: 5,
     zoomControl: true,
     preferCanvas: true,
-    zoomSnap: 0.25,
-    zoomDelta: 0.5,
-    wheelPxPerZoomLevel: 90,
+    zoomSnap: 0.5,
+    zoomDelta: 1,
+    wheelPxPerZoomLevel: 45,
     inertia: true,
     inertiaDeceleration: 2500,
     tap: true,
@@ -450,8 +450,10 @@ function renderMapRoute(data) {
     const trainIcon = L.divIcon({
       className: "train-pulse-icon",
       html: `<div class="train-location-label">${escapeHtml(label)}</div><div class="train-pulse-inner"></div>`,
+      // The pulse dot is flex-centred in this icon. Anchor on that centre so
+      // the visual train sits exactly on the route coordinate.
       iconSize: [250, 62],
-      iconAnchor: [125, 50],
+      iconAnchor: [125, 31],
     });
 
     if (trainMarker) {
