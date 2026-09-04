@@ -89,11 +89,26 @@ def prepare_model_dataframe(
     return dataframe[model_features]
 
 
+DEFAULT_MODEL_DIR = Path(__file__).resolve().parent / "model"
+
+
 class ChampionModelContainer:
     """Encapsulates the live LightGBM booster model, feature configuration, and category maps."""
 
-    def __init__(self, model_dir: Path | str):
-        self.model_dir = Path(model_dir)
+    def __init__(self, model_dir: Path | str | None = None):
+        if model_dir is None:
+            self.model_dir = DEFAULT_MODEL_DIR
+        else:
+            candidate = Path(model_dir)
+            if not candidate.is_absolute():
+                relative_to_backend = Path(__file__).resolve().parent / candidate
+                if relative_to_backend.exists():
+                    self.model_dir = relative_to_backend.resolve()
+                else:
+                    self.model_dir = candidate.resolve()
+            else:
+                self.model_dir = candidate.resolve()
+
         self.model_path = self.model_dir / "champion_model_scheduled_segment_v2.txt"
         self.feature_config_path = self.model_dir / "model_features_scheduled_segment_v2.json"
         self.categories_path = self.model_dir / "station_categories_scheduled_segment_v2.json"
@@ -105,9 +120,41 @@ class ChampionModelContainer:
         self._load_categories()
 
     def _check_files(self) -> None:
-        for p in [self.model_path, self.feature_config_path, self.categories_path]:
+        if not self.model_path.exists():
+            raise FileNotFoundError(
+                f"Required LightGBM model artifact not found: {self.model_path.resolve()}"
+            )
+        if not self.model_path.is_file():
+            raise FileNotFoundError(
+                f"LightGBM model path is not a regular file: {self.model_path.resolve()}"
+            )
+        if self.model_path.stat().st_size == 0:
+            raise RuntimeError(
+                f"LightGBM model artifact is empty (0 bytes): {self.model_path.resolve()}"
+            )
+
+        for p in [self.feature_config_path, self.categories_path]:
             if not p.exists():
-                raise FileNotFoundError(f"Required model artifact not found: {p}")
+                raise FileNotFoundError(f"Required model artifact not found: {p.resolve()}")
+            if not p.is_file():
+                raise FileNotFoundError(f"Required model artifact is not a file: {p.resolve()}")
+            if p.stat().st_size == 0:
+                raise RuntimeError(f"Required model artifact is empty (0 bytes): {p.resolve()}")
+
+        # LightGBM parser requires Unix LF line endings.
+        # If checked out with CRLF on Windows or another environment, normalize to LF.
+        try:
+            with open(self.model_path, "rb") as f:
+                header = f.read(4096)
+            if b"\r\n" in header:
+                logger.warning(
+                    "Model %s contains CRLF line endings; normalizing to LF for LightGBM parser",
+                    self.model_path,
+                )
+                content = self.model_path.read_bytes()
+                self.model_path.write_bytes(content.replace(b"\r\n", b"\n"))
+        except OSError as e:
+            logger.warning("Could not auto-normalize model line endings on disk: %s", e)
 
     def _load_categories(self) -> None:
         with open(self.categories_path, "r", encoding="utf-8") as f:

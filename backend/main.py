@@ -14,13 +14,19 @@ import time
 from typing import Any
 from uuid import uuid4
 
+# pyrefly: ignore [missing-import]
 from dotenv import load_dotenv
 # pyrefly: ignore [missing-import]
 from fastapi import FastAPI, Header, HTTPException, Request, Response, status
+# pyrefly: ignore [missing-import]
 from fastapi.middleware.cors import CORSMiddleware
+# pyrefly: ignore [missing-import]
 from fastapi.responses import FileResponse, HTMLResponse
+# pyrefly: ignore [missing-import]
 from fastapi.staticfiles import StaticFiles
+# pyrefly: ignore [missing-import]
 import lightgbm as lgb
+# pyrefly: ignore [missing-import]
 from pydantic import BaseModel, Field
 import requests
 
@@ -176,6 +182,27 @@ journey_model_config: dict[str, Any] | None = None
 journey_model_metrics: dict[str, Any] | None = None
 
 if JOURNEY_MODEL_PATH.exists():
+    if not JOURNEY_MODEL_PATH.is_file():
+        raise FileNotFoundError(
+            f"Journey model path is not a regular file: {JOURNEY_MODEL_PATH.resolve()}"
+        )
+    if JOURNEY_MODEL_PATH.stat().st_size == 0:
+        raise RuntimeError(
+            f"Journey model artifact is empty (0 bytes): {JOURNEY_MODEL_PATH.resolve()}"
+        )
+    try:
+        with open(JOURNEY_MODEL_PATH, "rb") as f:
+            header = f.read(4096)
+        if b"\r\n" in header:
+            logger.warning(
+                "Journey model %s contains CRLF line endings; normalizing to LF for LightGBM parser",
+                JOURNEY_MODEL_PATH,
+            )
+            content = JOURNEY_MODEL_PATH.read_bytes()
+            JOURNEY_MODEL_PATH.write_bytes(content.replace(b"\r\n", b"\n"))
+    except OSError as e:
+        logger.warning("Could not auto-normalize journey model line endings on disk: %s", e)
+
     journey_model = lgb.Booster(model_file=str(JOURNEY_MODEL_PATH))
     if JOURNEY_MODEL_METRICS_PATH.exists():
         with open(JOURNEY_MODEL_METRICS_PATH, "r", encoding="utf-8") as f:
@@ -518,7 +545,7 @@ def predict_journey(
         )
 
     frame = prepare_journey_model_dataframe(data.features, journey_model_config)
-    predicted_delay = max(0.0, float(journey_model.predict(frame)[0]))
+    predicted_delay = max(0.0, float(journey_model.predict(frame)[0]))  # type: ignore
     threshold = float(journey_model_config.get("late_threshold_minutes", 15.0))
     result: dict[str, Any] = {
         "predicted_destination_delay_minutes": round(predicted_delay, 2),

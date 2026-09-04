@@ -1,2 +1,5 @@
 # LightGBM's text model parser requires Unix line endings on Windows too.
+backend/model/*.txt text eol=lf
 backend/model/champion_model.txt text eol=lf
+backend/model/champion_model_scheduled_segment_v2.txt text eol=lf
+backend/model/journey_delay_model.txt text eol=lf

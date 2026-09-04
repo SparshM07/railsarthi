@@ -25,8 +25,19 @@ class PredictionInputTests(unittest.TestCase):
                 PredictionInput(train=train)
 
     def test_champion_model_uses_lf_line_endings(self):
-        model_path = Path(__file__).resolve().parents[1] / "backend" / "model" / "champion_model.txt"
-        self.assertNotIn(b"\r\n", model_path.read_bytes())
+        model_dir = Path(__file__).resolve().parents[1] / "backend" / "model"
+        for name in [
+            "champion_model.txt",
+            "champion_model_scheduled_segment_v2.txt",
+            "journey_delay_model.txt",
+        ]:
+            model_path = model_dir / name
+            if model_path.exists():
+                self.assertNotIn(
+                    b"\r\n",
+                    model_path.read_bytes(),
+                    f"Model {name} must have Unix LF line endings for LightGBM parser",
+                )
 
 
 class HistoricalStatisticsTests(unittest.TestCase):
