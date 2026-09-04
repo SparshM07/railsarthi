@@ -25,7 +25,12 @@ class PredictionInputTests(unittest.TestCase):
                 PredictionInput(train=train)
 
     def test_champion_model_uses_lf_line_endings(self):
-        model_path = Path(__file__).resolve().parents[1] / "backend" / "model" / "champion_model.txt"
+        model_path = (
+            Path(__file__).resolve().parents[1]
+            / "backend"
+            / "model"
+            / "champion_model_scheduled_segment_v2.txt"
+        )
         self.assertNotIn(b"\r\n", model_path.read_bytes())
 
 
