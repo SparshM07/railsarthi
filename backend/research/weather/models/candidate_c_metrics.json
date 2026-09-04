@@ -1,0 +1,553 @@
+{
+  "dataset_path": "C:\\Users\\SPARSH MAURYA\\OneDrive\\Desktop\\SIH_2026\\railsarthi\\backend\\research\\weather\\data\\processed\\v3_weather_features.csv",
+  "total_rows": 1224840,
+  "splits": {
+    "train": 730698,
+    "validation": 247683,
+    "test": 246459
+  },
+  "features": [
+    "train",
+    "station",
+    "next_station",
+    "current_arr_delay",
+    "scheduled_segment_minutes",
+    "past_segment_mean",
+    "past_segment_median",
+    "past_segment_std",
+    "past_segment_count",
+    "day_of_week",
+    "month",
+    "is_weekend",
+    "previous_train_delay",
+    "fog_flag",
+    "fog_observation_available",
+    "visibility_available",
+    "visibility_lt_500m"
+  ],
+  "overall_test_metrics": {
+    "v2": {
+      "rows": 246459,
+      "mae": 8.43715521943989,
+      "rmse": 26.51840815207557,
+      "r2": 0.8809008828798739,
+      "bias": -0.0927309005390052,
+      "median_ae": 3.6045565223686786,
+      "p90": 16.94488440485358,
+      "p95": 27.833584827049876,
+      "within_5": 60.91844891036643,
+      "within_10": 80.42919917714508,
+      "within_15": 88.26985421510271,
+      "within_30": 95.5258278253178,
+      "within_60": 98.44477174702486
+    },
+    "candidate_c": {
+      "rows": 246459,
+      "mae": 8.257373969511317,
+      "rmse": 26.57751960252458,
+      "r2": 0.8803693300061182,
+      "bias": -0.11486345768375986,
+      "median_ae": 3.440443828559105,
+      "p90": 16.681002996152976,
+      "p95": 27.477683239644474,
+      "within_5": 62.149891056930365,
+      "within_10": 81.07271391996235,
+      "within_15": 88.52466333142632,
+      "within_30": 95.57167723637603,
+      "within_60": 98.44720622902796
+    },
+    "mae_improvement_pct": 2.1308278116579324,
+    "rmse_improvement_pct": -0.2229072352685044
+  },
+  "cohorts": {
+    "Overall Test Set": {
+      "count": 246459,
+      "v2_mae": 8.43715521943989,
+      "v2_rmse": 26.51840815207557,
+      "v2_within_15": 88.26985421510271,
+      "cand_mae": 8.257373969511317,
+      "cand_rmse": 26.57751960252458,
+      "cand_within_15": 88.52466333142632,
+      "delta_mae": 0.17978124992857403,
+      "imprv_pct": 2.1308278116579324
+    },
+    "Confirmed Fog": {
+      "count": 77373,
+      "v2_mae": 9.034265362161106,
+      "v2_rmse": 29.629517522821043,
+      "v2_within_15": 87.57576932521681,
+      "cand_mae": 8.881440259740586,
+      "cand_rmse": 29.69292189098795,
+      "cand_within_15": 87.82262546366304,
+      "delta_mae": 0.15282510242052005,
+      "imprv_pct": 1.691616266449389
+    },
+    "Clear / Non-Fog Weather": {
+      "count": 169086,
+      "v2_mae": 8.163920279393,
+      "v2_rmse": 24.965818867483193,
+      "v2_within_15": 88.58746436724508,
+      "cand_mae": 7.971804016505693,
+      "cand_rmse": 25.02290416951689,
+      "cand_within_15": 88.84591273079971,
+      "delta_mae": 0.192116262887307,
+      "imprv_pct": 2.3532354103486064
+    },
+    "Visibility < 1000m": {
+      "count": 688,
+      "v2_mae": 14.788453862903673,
+      "v2_rmse": 41.36142831572471,
+      "v2_within_15": 79.79651162790698,
+      "cand_mae": 14.628169019618348,
+      "cand_rmse": 40.53769355998573,
+      "cand_within_15": 79.79651162790698,
+      "delta_mae": 0.160284843285325,
+      "imprv_pct": 1.0838512583617277
+    },
+    "Visibility < 500m": {
+      "count": 352,
+      "v2_mae": 11.894477735063509,
+      "v2_rmse": 21.92122036052992,
+      "v2_within_15": 77.27272727272727,
+      "cand_mae": 11.86885984528817,
+      "cand_rmse": 22.79563409799995,
+      "cand_within_15": 78.125,
+      "delta_mae": 0.0256178897753383,
+      "imprv_pct": 0.21537633131902714
+    },
+    "Visibility < 200m": {
+      "count": 291,
+      "v2_mae": 12.797888540821804,
+      "v2_rmse": 23.44328297356271,
+      "v2_within_15": 74.91408934707904,
+      "cand_mae": 12.773771901189983,
+      "cand_rmse": 24.34331363741095,
+      "cand_within_15": 75.60137457044674,
+      "delta_mae": 0.024116639631820647,
+      "imprv_pct": 0.18844233214639344
+    },
+    "Fog + Visibility < 1000m": {
+      "count": 688,
+      "v2_mae": 14.788453862903673,
+      "v2_rmse": 41.36142831572471,
+      "v2_within_15": 79.79651162790698,
+      "cand_mae": 14.628169019618348,
+      "cand_rmse": 40.53769355998573,
+      "cand_within_15": 79.79651162790698,
+      "delta_mae": 0.160284843285325,
+      "imprv_pct": 1.0838512583617277
+    },
+    "Fog + Visibility < 500m": {
+      "count": 352,
+      "v2_mae": 11.894477735063509,
+      "v2_rmse": 21.92122036052992,
+      "v2_within_15": 77.27272727272727,
+      "cand_mae": 11.86885984528817,
+      "cand_rmse": 22.79563409799995,
+      "cand_within_15": 78.125,
+      "delta_mae": 0.0256178897753383,
+      "imprv_pct": 0.21537633131902714
+    },
+    "Fog + Visibility < 200m": {
+      "count": 291,
+      "v2_mae": 12.797888540821804,
+      "v2_rmse": 23.44328297356271,
+      "v2_within_15": 74.91408934707904,
+      "cand_mae": 12.773771901189983,
+      "cand_rmse": 24.34331363741095,
+      "cand_within_15": 75.60137457044674,
+      "delta_mae": 0.024116639631820647,
+      "imprv_pct": 0.18844233214639344
+    }
+  },
+  "bootstrap": {
+    "Overall Test Set": {
+      "count": 246459,
+      "wins": 141239,
+      "losses": 98729,
+      "ties": 6491,
+      "win_rate": 57.30730060578028,
+      "loss_rate": 40.05899561387493,
+      "mean_diff": 0.1797812499285731,
+      "ci_low": 0.16875546748157577,
+      "ci_high": 0.1900997117356062,
+      "significant": true
+    },
+    "Confirmed Fog": {
+      "count": 77373,
+      "wins": 43879,
+      "losses": 31540,
+      "ties": 1954,
+      "win_rate": 56.71099737634575,
+      "loss_rate": 40.763573856513254,
+      "mean_diff": 0.15282510242051964,
+      "ci_low": 0.13162654560194617,
+      "ci_high": 0.17344141284356418,
+      "significant": true
+    },
+    "Clear / Non-Fog Weather": {
+      "count": 169086,
+      "wins": 97360,
+      "losses": 67189,
+      "ties": 4537,
+      "win_rate": 57.580166305903504,
+      "loss_rate": 39.73658375028092,
+      "mean_diff": 0.19211626288730788,
+      "ci_low": 0.1787164654949785,
+      "ci_high": 0.2058428132275275,
+      "significant": true
+    },
+    "Visibility < 1000m": {
+      "count": 688,
+      "wins": 388,
+      "losses": 287,
+      "ties": 13,
+      "win_rate": 56.395348837209305,
+      "loss_rate": 41.71511627906977,
+      "mean_diff": 0.16028484328532458,
+      "ci_low": -0.15685974029455288,
+      "ci_high": 0.4660765732041338,
+      "significant": false
+    },
+    "Visibility < 500m": {
+      "count": 352,
+      "wins": 197,
+      "losses": 152,
+      "ties": 3,
+      "win_rate": 55.96590909090909,
+      "loss_rate": 43.18181818181818,
+      "mean_diff": 0.02561788977533959,
+      "ci_low": -0.40573732928996636,
+      "ci_high": 0.4002330143427536,
+      "significant": false
+    },
+    "Visibility < 200m": {
+      "count": 291,
+      "wins": 164,
+      "losses": 125,
+      "ties": 2,
+      "win_rate": 56.3573883161512,
+      "loss_rate": 42.955326460481096,
+      "mean_diff": 0.02411663963182084,
+      "ci_low": -0.47008993244338587,
+      "ci_high": 0.4211877509017487,
+      "significant": false
+    },
+    "Fog + Visibility < 1000m": {
+      "count": 688,
+      "wins": 388,
+      "losses": 287,
+      "ties": 13,
+      "win_rate": 56.395348837209305,
+      "loss_rate": 41.71511627906977,
+      "mean_diff": 0.16028484328532458,
+      "ci_low": -0.15685974029455288,
+      "ci_high": 0.4660765732041338,
+      "significant": false
+    },
+    "Fog + Visibility < 500m": {
+      "count": 352,
+      "wins": 197,
+      "losses": 152,
+      "ties": 3,
+      "win_rate": 55.96590909090909,
+      "loss_rate": 43.18181818181818,
+      "mean_diff": 0.02561788977533959,
+      "ci_low": -0.40573732928996636,
+      "ci_high": 0.4002330143427536,
+      "significant": false
+    },
+    "Fog + Visibility < 200m": {
+      "count": 291,
+      "wins": 164,
+      "losses": 125,
+      "ties": 2,
+      "win_rate": 56.3573883161512,
+      "loss_rate": 42.955326460481096,
+      "mean_diff": 0.02411663963182084,
+      "ci_low": -0.47008993244338587,
+      "ci_high": 0.4211877509017487,
+      "significant": false
+    }
+  },
+  "delay_buckets": {
+    "0\u20135 min (On-Time / Minimal)": {
+      "count": 105926,
+      "v2_mae": 6.837085484596955,
+      "cand_mae": 6.615075237159979,
+      "delta": 0.22201024743697584,
+      "pct": 3.2471474568679213
+    },
+    "5\u201310 min (Slight)": {
+      "count": 23993,
+      "v2_mae": 3.883920297509451,
+      "cand_mae": 3.7552762039509893,
+      "delta": 0.12864409355846185,
+      "pct": 3.3122227982112395
+    },
+    "10\u201315 min (Moderate)": {
+      "count": 20144,
+      "v2_mae": 4.5035625349184425,
+      "cand_mae": 4.364664195267944,
+      "delta": 0.13889833965049814,
+      "pct": 3.084188097168579
+    },
+    "15\u201330 min (Substantial)": {
+      "count": 36951,
+      "v2_mae": 6.160353105105311,
+      "cand_mae": 5.961750798998148,
+      "delta": 0.1986023061071629,
+      "pct": 3.2238786108311532
+    },
+    "30\u201360 min (High)": {
+      "count": 28720,
+      "v2_mae": 9.376998183669215,
+      "cand_mae": 9.164616557430739,
+      "delta": 0.21238162623847678,
+      "pct": 2.2649212688166687
+    },
+    "60+ min (Severe)": {
+      "count": 30725,
+      "v2_mae": 21.947679816541953,
+      "cand_mae": 21.899856558708453,
+      "delta": 0.04782325783349961,
+      "pct": 0.21789664435260828
+    }
+  },
+  "freshness": {
+    "0\u201330 min age (Immediate)": {
+      "count": 49336,
+      "v2_mae": 8.856532212101941,
+      "cand_mae": 8.70077489564645,
+      "delta": 0.15575731645549062,
+      "pct": 1.7586715965720447
+    },
+    "31\u201360 min age (Hourly)": {
+      "count": 18572,
+      "v2_mae": 8.301205379963287,
+      "cand_mae": 8.105300164954956,
+      "delta": 0.1959052150083309,
+      "pct": 2.359961066391509
+    },
+    "61\u2013120 min age (Stale 1-2h)": {
+      "count": 32642,
+      "v2_mae": 8.300263651067944,
+      "cand_mae": 8.122736000467649,
+      "delta": 0.17752765060029496,
+      "pct": 2.1388194166272485
+    },
+    "121\u2013180 min age (Stale 2-3h)": {
+      "count": 30118,
+      "v2_mae": 7.839558635015294,
+      "cand_mae": 7.655437538871238,
+      "delta": 0.18412109614405558,
+      "pct": 2.348615588149069
+    },
+    "Missing Observation (>180m / NaN)": {
+      "count": 115791,
+      "v2_mae": 8.47430236916035,
+      "cand_mae": 8.287364733991797,
+      "delta": 0.18693763516855277,
+      "pct": 2.2059353917893647
+    }
+  },
+  "feature_importance": [
+    {
+      "feature": "current_arr_delay",
+      "gain": 66989209868.75464,
+      "gain_pct": 72.1074029426879,
+      "splits": 6360,
+      "is_weather": false
+    },
+    {
+      "feature": "previous_train_delay",
+      "gain": 18564025303.159912,
+      "gain_pct": 19.982377093203514,
+      "splits": 6218,
+      "is_weather": false
+    },
+    {
+      "feature": "past_segment_std",
+      "gain": 1527985848.885254,
+      "gain_pct": 1.6447289274221486,
+      "splits": 2598,
+      "is_weather": false
+    },
+    {
+      "feature": "train",
+      "gain": 1415693704.0402832,
+      "gain_pct": 1.5238572982224787,
+      "splits": 6912,
+      "is_weather": false
+    },
+    {
+      "feature": "next_station",
+      "gain": 1171591931.4052734,
+      "gain_pct": 1.2611053578293614,
+      "splits": 5997,
+      "is_weather": false
+    },
+    {
+      "feature": "station",
+      "gain": 1053783912.7214355,
+      "gain_pct": 1.1342964241255862,
+      "splits": 6273,
+      "is_weather": false
+    },
+    {
+      "feature": "past_segment_mean",
+      "gain": 679304400.1730957,
+      "gain_pct": 0.7312054612972693,
+      "splits": 2027,
+      "is_weather": false
+    },
+    {
+      "feature": "past_segment_median",
+      "gain": 579649490.7312012,
+      "gain_pct": 0.6239365933046134,
+      "splits": 1720,
+      "is_weather": false
+    },
+    {
+      "feature": "scheduled_segment_minutes",
+      "gain": 363963049.2722168,
+      "gain_pct": 0.3917710076225594,
+      "splits": 2579,
+      "is_weather": false
+    },
+    {
+      "feature": "past_segment_count",
+      "gain": 269673063.1821289,
+      "gain_pct": 0.2902769605397676,
+      "splits": 1706,
+      "is_weather": false
+    },
+    {
+      "feature": "day_of_week",
+      "gain": 206300904.2368164,
+      "gain_pct": 0.22206296295164138,
+      "splits": 1139,
+      "is_weather": false
+    },
+    {
+      "feature": "fog_flag",
+      "gain": 69276030.49951172,
+      "gain_pct": 0.07456894409241512,
+      "splits": 602,
+      "is_weather": true
+    },
+    {
+      "feature": "fog_observation_available",
+      "gain": 7063878.264160156,
+      "gain_pct": 0.007603581492151137,
+      "splits": 45,
+      "is_weather": true
+    },
+    {
+      "feature": "is_weekend",
+      "gain": 2328786.39453125,
+      "gain_pct": 0.0025067132340702136,
+      "splits": 29,
+      "is_weather": false
+    },
+    {
+      "feature": "visibility_available",
+      "gain": 1250859.0888671875,
+      "gain_pct": 0.0013464287834142584,
+      "splits": 7,
+      "is_weather": true
+    },
+    {
+      "feature": "visibility_lt_500m",
+      "gain": 885637.603515625,
+      "gain_pct": 0.0009533031911111395,
+      "splits": 14,
+      "is_weather": true
+    },
+    {
+      "feature": "month",
+      "gain": 0.0,
+      "gain_pct": 0.0,
+      "splits": 0,
+      "is_weather": false
+    }
+  ],
+  "winter_environmental_stats": {
+    "oct2024": {
+      "month": "2024-10",
+      "stations_requested": 355,
+      "stations_acquired": 334,
+      "stations_missing": 21,
+      "raw_records": 93430,
+      "normalized_records": 86650,
+      "temp_valid": 86544,
+      "dew_valid": 86569,
+      "rh_valid": 86482,
+      "vis_valid": 86474,
+      "wind_valid": 86162,
+      "precip_valid": 9971,
+      "pw_valid": 55711,
+      "fog_code_count": 55682,
+      "vis_lt_1000m": 571,
+      "vis_lt_500m": 130,
+      "vis_lt_200m": 41
+    },
+    "nov2024": {
+      "month": "2024-11",
+      "stations_requested": 355,
+      "stations_acquired": 330,
+      "stations_missing": 25,
+      "raw_records": 78678,
+      "normalized_records": 72951,
+      "temp_valid": 72875,
+      "dew_valid": 72874,
+      "rh_valid": 72832,
+      "vis_valid": 72798,
+      "wind_valid": 72529,
+      "precip_valid": 4161,
+      "pw_valid": 52623,
+      "fog_code_count": 52556,
+      "vis_lt_1000m": 2234,
+      "vis_lt_500m": 782,
+      "vis_lt_200m": 368
+    },
+    "dec2024": {
+      "month": "2024-12",
+      "stations_requested": 355,
+      "stations_acquired": 333,
+      "stations_missing": 22,
+      "raw_records": 88779,
+      "normalized_records": 82339,
+      "temp_valid": 82272,
+      "dew_valid": 82271,
+      "rh_valid": 82235,
+      "vis_valid": 82157,
+      "wind_valid": 81855,
+      "precip_valid": 5269,
+      "pw_valid": 60040,
+      "fog_code_count": 59990,
+      "vis_lt_1000m": 3175,
+      "vis_lt_500m": 882,
+      "vis_lt_200m": 360
+    },
+    "jan2025": {
+      "month": "2025-01",
+      "stations_requested": 355,
+      "stations_acquired": 329,
+      "stations_missing": 26,
+      "raw_records": 91943,
+      "normalized_records": 85268,
+      "temp_valid": 85188,
+      "dew_valid": 85127,
+      "rh_valid": 85064,
+      "vis_valid": 85093,
+      "wind_valid": 84772,
+      "precip_valid": 2654,
+      "pw_valid": 62435,
+      "fog_code_count": 62394,
+      "vis_lt_1000m": 6275,
+      "vis_lt_500m": 3014,
+      "vis_lt_200m": 1755
+    }
+  }
+}

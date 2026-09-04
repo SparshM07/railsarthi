@@ -35,3 +35,19 @@ notebooks/.ipynb_checkpoints/
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Weather research raw data
+backend/research/weather/data/raw/
+
+# Weather research generated/processed datasets
+backend/research/weather/data/processed/*.csv
+
+# Weather research model binaries
+backend/research/weather/models/*.txt
+
+# Research Python caches
+backend/research/**/__pycache__/
+backend/research/**/*.pyc
+
+# IDE settings
+.vscode/

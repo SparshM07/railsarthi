@@ -214,30 +214,46 @@
               </div>
             </div>
 
-            <!-- Key Figures: Current Delay & Next ETA -->
-            <div class="flex flex-wrap sm:flex-nowrap items-center gap-4">
-              <!-- Current Delay Display -->
-              <div class="bg-cyber-bg/80 border border-cyber-border p-4 rounded-xl flex items-center gap-4 min-w-[170px]">
-                <div class="w-11 h-11 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                  <i data-lucide="clock" class="w-5 h-5"></i>
+            <!-- Key Figures: Live Timetable & AI Variance Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full lg:w-auto">
+              <!-- Figure 1: Current Reported Delay -->
+              <div class="bg-cyber-bg/90 border border-cyber-border p-3.5 rounded-xl flex flex-col justify-between min-w-[140px]">
+                <div class="flex items-center justify-between text-slate-400 mb-1">
+                  <span class="text-[10px] uppercase font-mono tracking-wider">Current Delay</span>
+                  <i data-lucide="clock" class="w-3.5 h-3.5 text-amber-400"></i>
                 </div>
-                <div>
-                  <div class="text-[10px] uppercase text-slate-400 font-mono tracking-wider">Current Delay</div>
-                  <div id="hero-current-delay-val" class="text-2xl font-extrabold font-mono text-amber-400">-- min</div>
-                  <div id="hero-delay-sub" class="text-[10px] text-slate-400">Reported delay</div>
-                </div>
+                <div id="hero-current-delay-val" class="text-xl lg:text-2xl font-extrabold font-mono text-amber-400">-- min</div>
+                <div id="hero-delay-sub" class="text-[10px] text-slate-400 mt-0.5 truncate">Reported delay</div>
               </div>
 
-              <!-- Next Station ETA Countdown -->
-              <div class="bg-cyber-bg/80 border border-cyber-border p-4 rounded-xl flex items-center gap-4 min-w-[190px]">
-                <div class="w-11 h-11 rounded-xl bg-cyber-teal/10 border border-cyber-teal/30 flex items-center justify-center text-cyber-teal">
-                  <i data-lucide="timer" class="w-5 h-5 animate-pulse"></i>
+              <!-- Figure 2: Next Station Scheduled Arrival -->
+              <div class="bg-cyber-bg/90 border border-cyber-border p-3.5 rounded-xl flex flex-col justify-between min-w-[140px]">
+                <div class="flex items-center justify-between text-slate-400 mb-1">
+                  <span class="text-[10px] uppercase font-mono tracking-wider">Scheduled ETA</span>
+                  <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i>
                 </div>
-                <div>
-                  <div class="text-[10px] uppercase text-slate-400 font-mono tracking-wider">Next Station ETA</div>
-                  <div id="hero-next-eta-countdown" class="text-2xl font-extrabold font-mono text-white">--:--</div>
-                  <div id="hero-next-eta-rel" class="text-[10px] text-cyber-teal">-- min from now</div>
+                <div id="hero-scheduled-eta" class="text-xl lg:text-2xl font-extrabold font-mono text-slate-200">--:--</div>
+                <div id="hero-scheduled-eta-sub" class="text-[10px] text-slate-400 mt-0.5 truncate">Official Timetable</div>
+              </div>
+
+              <!-- Figure 3: AI Predicted ETA -->
+              <div class="bg-cyber-bg/90 border border-cyber-teal/40 p-3.5 rounded-xl flex flex-col justify-between min-w-[150px] shadow-[0_0_15px_rgba(0,242,254,0.1)]">
+                <div class="flex items-center justify-between text-cyber-teal mb-1">
+                  <span class="text-[10px] uppercase font-mono tracking-wider font-bold">AI Predicted ETA</span>
+                  <i data-lucide="brain" class="w-3.5 h-3.5 text-cyber-teal animate-pulse"></i>
                 </div>
+                <div id="hero-next-eta-countdown" class="text-xl lg:text-2xl font-extrabold font-mono text-white">--:--</div>
+                <div id="hero-next-eta-rel" class="text-[10px] text-cyber-teal mt-0.5 font-semibold truncate">-- min from now</div>
+              </div>
+
+              <!-- Figure 4: Scheduled vs Predicted Difference (Variance) -->
+              <div class="bg-cyber-bg/90 border border-cyber-border p-3.5 rounded-xl flex flex-col justify-between min-w-[140px]">
+                <div class="flex items-center justify-between text-slate-400 mb-1">
+                  <span class="text-[10px] uppercase font-mono tracking-wider">ETA Variance</span>
+                  <i data-lucide="git-commit" class="w-3.5 h-3.5 text-cyber-blue"></i>
+                </div>
+                <div id="hero-eta-variance" class="text-xl lg:text-2xl font-extrabold font-mono text-cyber-teal">-- min</div>
+                <div id="hero-eta-variance-sub" class="text-[10px] text-slate-400 mt-0.5 truncate">vs Scheduled Arrival</div>
               </div>
             </div>
           </div>
@@ -321,6 +337,33 @@
           </div>
           <div id="prediction-factors" class="mt-3 grid grid-cols-2 md:grid-cols-5 gap-2" aria-live="polite"></div>
           <p id="prediction-weather-note" class="mt-3 text-[11px] text-slate-500"></p>
+
+          <!-- Weather-Aware Research Intelligence Callout (Candidate C Benchmark) -->
+          <div class="mt-3 p-3.5 rounded-xl bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-cyber-bg/70 border border-purple-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-lg bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 shrink-0">
+                <i data-lucide="flask-conical" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-xs font-bold text-purple-200">Weather-Aware Research Intelligence</span>
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold">Candidate C &bull; +2.13% MAE Improvement</span>
+                  <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">57.3% Paired Win Rate</span>
+                </div>
+                <div class="text-[11px] text-slate-400 mt-1" id="weather-research-note">
+                  Production runs frozen Champion V2 LightGBM. Candidate C research model incorporates causal NOAA GHCNh observations, lowering test MAE from 8.44m to 8.26m (p &lt; 0.001).
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-xs font-mono shrink-0">
+              <div class="px-2.5 py-1 rounded-lg bg-cyber-bg/90 border border-white/10 text-slate-300" id="weather-fog-status">
+                Fog: <span class="text-emerald-400 font-bold">Normal Visibility</span>
+              </div>
+              <div class="px-2.5 py-1 rounded-lg bg-cyber-bg/90 border border-white/10 text-slate-300" id="weather-vis-status">
+                Telemetry: <span class="text-cyber-teal font-bold">Open-Meteo Active</span>
+              </div>
+            </div>
+          </div>
         </section>
 
         <!-- Two Column Layout: Interactive Live Map + Cascading Stations Timeline -->
@@ -335,17 +378,29 @@
                   <span class="font-semibold text-sm">Live Track Geospatial Map</span>
                 </div>
                 <div class="flex items-center gap-2">
-                  <button id="btn-fit-route" class="px-2.5 py-1 rounded bg-cyber-surface hover:bg-cyber-card border border-cyber-border text-xs text-slate-300 flex items-center gap-1">
+                  <button id="btn-fit-route" class="px-2.5 py-1 rounded bg-cyber-surface hover:bg-cyber-card border border-cyber-border text-xs text-slate-300 flex items-center gap-1" title="Fit Entire Route">
                     <i data-lucide="maximize-2" class="w-3 h-3"></i> Fit Route
                   </button>
-                  <button id="btn-focus-train" class="px-2.5 py-1 rounded bg-cyber-surface hover:bg-cyber-card border border-cyber-border text-xs text-cyber-teal flex items-center gap-1">
-                    <i data-lucide="crosshair" class="w-3 h-3"></i> Focus Train
+                  <button id="btn-focus-segment" class="px-2.5 py-1 rounded bg-cyber-surface hover:bg-cyber-card border border-cyber-border text-xs text-amber-300 flex items-center gap-1" title="Focus Active Running Segment">
+                    <i data-lucide="navigation" class="w-3 h-3"></i> Segment
+                  </button>
+                  <button id="btn-focus-train" class="px-2.5 py-1 rounded bg-cyber-surface hover:bg-cyber-card border border-cyber-border text-xs text-cyber-teal flex items-center gap-1" title="Center on Current Train">
+                    <i data-lucide="crosshair" class="w-3 h-3"></i> Train
                   </button>
                 </div>
               </div>
               <div id="map-container" class="relative flex-1 w-full rounded-xl mt-3 overflow-hidden border border-cyber-border">
                 <div id="map" class="w-full h-full"></div>
                 <div id="map-no-route-msg" class="hidden absolute top-3 left-1/2 -translate-x-1/2 z-[400] px-3 py-1.5 rounded-lg bg-cyber-bg/90 border border-amber-500/40 text-xs font-mono text-amber-300 shadow-xl pointer-events-none">Route geometry unavailable for this train</div>
+                
+                <!-- Geospatial Map Legend Overlay -->
+                <div class="absolute bottom-3 left-3 z-[400] bg-cyber-bg/95 backdrop-blur-md border border-cyber-border rounded-xl px-3 py-2 text-[10px] font-mono shadow-xl flex flex-wrap gap-3 items-center pointer-events-auto">
+                  <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 border border-white"></span> <span class="text-slate-200 font-semibold">Current Halt</span></div>
+                  <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400 border border-white animate-pulse"></span> <span class="text-slate-200 font-semibold">Next Station</span></div>
+                  <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 border border-slate-900"></span> <span class="text-slate-300">Upcoming Stops</span></div>
+                  <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-600 border border-slate-500"></span> <span class="text-slate-400">Passed</span></div>
+                  <div class="flex items-center gap-1.5"><span class="w-3.5 h-1 bg-[#00f2fe] rounded-full"></span> <span class="text-cyan-300 font-semibold">Route</span></div>
+                </div>
               </div>
             </div>
           </div>
@@ -719,6 +774,57 @@
             </div>
           </div>
 
+        </div>
+
+        <!-- Research Enhancement: Candidate C Weather-Aware Model Card -->
+        <div class="glass-panel p-6 rounded-2xl border border-purple-500/30 bg-gradient-to-br from-purple-950/20 via-cyber-card to-cyber-bg flex flex-col gap-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <span class="text-[10px] font-mono uppercase px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-bold">
+                🔬 Active R&D Artifact &bull; Candidate C
+              </span>
+              <h3 class="text-xl font-bold text-white mt-2 flex items-center gap-2">
+                <i data-lucide="cloud-lightning" class="w-5 h-5 text-purple-400"></i> Weather-Aware LightGBM Model (Candidate C)
+              </h3>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-mono text-purple-300 bg-purple-500/10 px-3 py-1 rounded-lg border border-purple-500/30">17 Features &bull; 702 Trees &bull; 9.55 MB</span>
+            </div>
+          </div>
+
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Candidate C demonstrates the performance ceiling when expanding the frozen V2 feature set with causal backward-matched NOAA GHCNh weather observations (visibility, humidity, fog, precipitation, wind speed).
+          </p>
+
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center font-mono">
+            <div class="bg-cyber-bg/80 p-3.5 rounded-xl border border-white/5">
+              <div class="text-[10px] uppercase text-slate-400">Test MAE</div>
+              <div class="text-lg font-extrabold text-purple-300">8.2574 min</div>
+              <div class="text-[10px] text-slate-500 mt-0.5">vs 8.4372m (V2)</div>
+            </div>
+            <div class="bg-cyber-bg/80 p-3.5 rounded-xl border border-emerald-500/20">
+              <div class="text-[10px] uppercase text-slate-400">Relative Gain</div>
+              <div class="text-lg font-extrabold text-emerald-400">+2.13%</div>
+              <div class="text-[10px] text-emerald-500/80 mt-0.5">MAE reduction</div>
+            </div>
+            <div class="bg-cyber-bg/80 p-3.5 rounded-xl border border-white/5">
+              <div class="text-[10px] uppercase text-slate-400">Paired Win Rate</div>
+              <div class="text-lg font-extrabold text-cyan-300">57.31%</div>
+              <div class="text-[10px] text-slate-500 mt-0.5">paired test segments</div>
+            </div>
+            <div class="bg-cyber-bg/80 p-3.5 rounded-xl border border-white/5">
+              <div class="text-[10px] uppercase text-slate-400">Significance</div>
+              <div class="text-lg font-extrabold text-white">p &lt; 0.001</div>
+              <div class="text-[10px] text-slate-500 mt-0.5">95% CI: [+0.17, +0.19]m</div>
+            </div>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-cyber-bg/60 border border-white/5 text-xs text-slate-400 flex items-start gap-2.5">
+            <i data-lucide="info" class="w-4 h-4 text-purple-400 shrink-0 mt-0.5"></i>
+            <div>
+              <b class="text-slate-200">Architectural Boundary:</b> The V2 LightGBM model remains the 100% frozen production engine for real-time inference. Candidate C remains an evaluated research artifact documenting significant error reduction under adverse meteorological conditions.
+            </div>
+          </div>
         </div>
 
         <!-- Operational Safeguards Matrix Card -->

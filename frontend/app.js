@@ -16,6 +16,69 @@ let isAutoRefreshActive = true;
 let availableCatalog = [];
 let lastAlertedDelay = null;
 let activePredictionSeq = 0;
+let stationCoordinatesCatalog = {};
+
+// Popular Demo Trains Authoritative Stations Catalog
+const POPULAR_TRAIN_STOPS = {
+  12919: [
+    { code: "DADN", name: "Dr. Ambedkar Nagar", lat: 22.5500, lng: 75.7667 },
+    { code: "INDB", name: "Indore Junction", lat: 22.7196, lng: 75.8648 },
+    { code: "UJN", name: "Ujjain Junction", lat: 23.1765, lng: 75.7772 },
+    { code: "BPL", name: "Bhopal Junction", lat: 23.2599, lng: 77.4126 },
+    { code: "VGLJ", name: "VGL Jhansi Junction", lat: 25.4484, lng: 78.5685 },
+    { code: "GWL", name: "Gwalior Junction", lat: 26.2183, lng: 78.1828 },
+    { code: "AGC", name: "Agra Cantt", lat: 27.1767, lng: 78.0081 },
+    { code: "NDLS", name: "New Delhi", lat: 28.6448, lng: 77.2197 },
+    { code: "LDH", name: "Ludhiana Junction", lat: 30.9010, lng: 75.8573 },
+    { code: "JAT", name: "Jammu Tawi", lat: 32.7060, lng: 74.8723 },
+    { code: "SVDK", name: "Shri Mata Vaishno Devi Katra", lat: 32.9915, lng: 74.9525 },
+  ],
+  12002: [
+    { code: "NDLS", name: "New Delhi", lat: 28.6448, lng: 77.2197 },
+    { code: "MTJ", name: "Mathura Junction", lat: 27.4924, lng: 77.6737 },
+    { code: "AGC", name: "Agra Cantt", lat: 27.1767, lng: 78.0081 },
+    { code: "GWL", name: "Gwalior Junction", lat: 26.2183, lng: 78.1828 },
+    { code: "VGLJ", name: "VGL Jhansi Junction", lat: 25.4484, lng: 78.5685 },
+    { code: "BPL", name: "Bhopal Junction", lat: 23.2599, lng: 77.4126 },
+    { code: "RKMP", name: "Rani Kamalapati", lat: 23.2299, lng: 77.4526 },
+  ],
+  22436: [
+    { code: "NDLS", name: "New Delhi", lat: 28.6448, lng: 77.2197 },
+    { code: "CNB", name: "Kanpur Central", lat: 26.4537, lng: 80.3507 },
+    { code: "PRYJ", name: "Prayagraj Junction", lat: 25.4497, lng: 81.8340 },
+    { code: "BSB", name: "Varanasi Junction", lat: 25.3283, lng: 82.9904 },
+  ],
+  12424: [
+    { code: "NDLS", name: "New Delhi", lat: 28.6448, lng: 77.2197 },
+    { code: "CNB", name: "Kanpur Central", lat: 26.4537, lng: 80.3507 },
+    { code: "DDU", name: "Pt. DD Upadhyaya Junction", lat: 25.2818, lng: 83.1160 },
+    { code: "PNBE", name: "Patna Junction", lat: 25.6022, lng: 85.1376 },
+    { code: "KIR", name: "Katihar Junction", lat: 25.5450, lng: 87.5750 },
+    { code: "NJP", name: "New Jalpaiguri", lat: 26.6852, lng: 88.4419 },
+    { code: "GHY", name: "Guwahati", lat: 26.1862, lng: 91.7539 },
+    { code: "DBRG", name: "Dibrugarh", lat: 27.4728, lng: 94.9120 },
+  ],
+  12952: [
+    { code: "NDLS", name: "New Delhi", lat: 28.6448, lng: 77.2197 },
+    { code: "KOTA", name: "Kota Junction", lat: 25.1843, lng: 75.8458 },
+    { code: "RTM", name: "Ratlam Junction", lat: 23.3323, lng: 75.0450 },
+    { code: "BRC", name: "Vadodara Junction", lat: 22.3107, lng: 73.1812 },
+    { code: "ST", name: "Surat", lat: 21.2035, lng: 72.8400 },
+    { code: "BVI", name: "Borivali", lat: 19.2288, lng: 72.8569 },
+    { code: "MMCT", name: "Mumbai Central", lat: 18.9696, lng: 72.8193 },
+  ],
+};
+
+async function loadStationCoordinates() {
+  try {
+    const res = await fetch("/static/stations.json");
+    if (res.ok) {
+      stationCoordinatesCatalog = await res.json();
+    }
+  } catch (err) {
+    console.warn("Could not load stations.json:", err);
+  }
+}
 
 // DOM Elements
 const trainInput = document.getElementById("train-input");
@@ -83,6 +146,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   initMap();
   refreshAlertButton();
   alertButton?.addEventListener("click", enableAlerts);
+  loadStationCoordinates();
   await loadTrainCatalog();
   await checkHealth();
   await executePrediction(12919); // Default train
@@ -183,6 +247,34 @@ function initMap() {
 
   document.getElementById("btn-fit-route")?.addEventListener("click", () => {
     if (routePolyline) map.fitBounds(routePolyline.getBounds(), { padding: [40, 40] });
+  });
+
+  document.getElementById("btn-focus-segment")?.addEventListener("click", () => {
+    if (!map || !currentTrainData) return;
+    const trainLat = currentTrainData.position?.latitude;
+    const trainLng = currentTrainData.position?.longitude;
+    const nextCode = currentTrainData.next_station;
+    let nextLat = null;
+    let nextLng = null;
+    if (nextCode) {
+      const popStops = POPULAR_TRAIN_STOPS[Number(currentTrainData.train)] || [];
+      const match = popStops.find((s) => s.code === nextCode);
+      if (match) {
+        nextLat = match.lat;
+        nextLng = match.lng;
+      } else if (stationCoordinatesCatalog[nextCode]) {
+        nextLat = stationCoordinatesCatalog[nextCode][0];
+        nextLng = stationCoordinatesCatalog[nextCode][1];
+      }
+    }
+    if (trainLat && trainLng) {
+      if (nextLat && nextLng) {
+        const bounds = L.latLngBounds([[trainLat, trainLng], [nextLat, nextLng]]);
+        map.fitBounds(bounds, { padding: [80, 80], maxZoom: 10 });
+      } else {
+        map.setView([trainLat, trainLng], 9, { animate: true });
+      }
+    }
   });
 
   document.getElementById("btn-focus-train")?.addEventListener("click", () => {
@@ -347,6 +439,9 @@ async function executePrediction(trainNumber, isBackground = false) {
       if (searchStatus) {
         searchStatus.textContent = `Unable to load Train #${trainNumber}: ${msg || "Error"}`;
       }
+      if (!isBackground) {
+        renderErrorState(trainNumber, msg);
+      }
       return;
     }
 
@@ -366,7 +461,10 @@ async function executePrediction(trainNumber, isBackground = false) {
   } catch (error) {
     if (currentSeq !== activePredictionSeq) return;
     console.error("API error:", error);
-    if (!isBackground) showToast("Unable to reach the prediction service. Please try again.", "error");
+    if (!isBackground) {
+      showToast("Unable to reach the prediction service. Please try again.", "error");
+      renderErrorState(trainNumber, "Network error or connection timeout while communicating with FastAPI backend.");
+    }
     if (searchStatus) {
       searchStatus.textContent = "Network error while reaching prediction service.";
     }
@@ -376,6 +474,49 @@ async function executePrediction(trainNumber, isBackground = false) {
       btnPredict.innerHTML = '<i data-lucide="zap" class="w-4 h-4"></i> Check Live ETA';
       if (window.lucide) window.lucide.createIcons();
     }
+  }
+}
+
+function renderErrorState(trainNumber, message) {
+  const container = document.getElementById("stations-timeline-container");
+  const heroStatus = document.getElementById("hero-delay-status");
+  if (heroStatus) {
+    heroStatus.className = "px-3 py-1 rounded-full text-xs font-semibold uppercase bg-rose-500/15 text-rose-400 border border-rose-500/30 flex items-center gap-1.5";
+    heroStatus.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> Telemetry Interrupted';
+  }
+
+  if (container) {
+    container.innerHTML = `
+      <div class="p-6 rounded-2xl bg-cyber-card/90 border border-rose-500/30 text-center flex flex-col items-center gap-3 mt-4">
+        <div class="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
+          <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <div class="font-bold text-white text-base">Telemetry Ingest Interrupted</div>
+          <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">
+            ${escapeHtml(message || "Unable to fetch live telemetry for Train #" + trainNumber)}. Please verify the train number or select from popular trains.
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center justify-center gap-2 mt-2">
+          <button id="btn-err-retry" class="px-4 py-2 rounded-xl bg-cyber-surface hover:bg-cyber-card border border-white/20 text-xs font-mono text-white flex items-center gap-1.5 transition-all active:scale-95">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-cyber-teal"></i> Retry Train #${escapeHtml(trainNumber)}
+          </button>
+          <button id="btn-err-malwa" class="px-4 py-2 rounded-xl bg-cyber-teal/10 hover:bg-cyber-teal/20 border border-cyber-teal/30 text-xs font-mono text-cyber-teal flex items-center gap-1.5 transition-all active:scale-95">
+            <i data-lucide="train" class="w-3.5 h-3.5"></i> Load 12919 Malwa Express
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.getElementById("btn-err-retry")?.addEventListener("click", () => {
+      executePrediction(trainNumber);
+    });
+    document.getElementById("btn-err-malwa")?.addEventListener("click", () => {
+      if (trainInput) trainInput.value = 12919;
+      executePrediction(12919);
+    });
+
+    if (window.lucide) window.lucide.createIcons();
   }
 }
 
@@ -440,10 +581,16 @@ function renderPredictionResults(data) {
     }
   }
 
-  // Next Station ETA Countdown
+  // Next Station ETA Countdown & Scheduled Comparison
+  const nextStop = (data.upcoming_stations || [])[0];
   const nextCountdownEl = document.getElementById("hero-next-eta-countdown");
   const nextRelEl = document.getElementById("hero-next-eta-rel");
-  if (data.next_station) {
+  const schedEtaEl = document.getElementById("hero-scheduled-eta");
+  const schedEtaSubEl = document.getElementById("hero-scheduled-eta-sub");
+  const etaVarianceEl = document.getElementById("hero-eta-variance");
+  const etaVarianceSubEl = document.getElementById("hero-eta-variance-sub");
+
+  if (data.next_station && nextStop) {
     let clockStr = "--:--";
     if (data.next_station_eta) {
       clockStr = new Date(data.next_station_eta).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
@@ -451,9 +598,52 @@ function renderPredictionResults(data) {
     const nextEtaMin = Math.round(data.next_station_eta_minutes ?? 0);
     if (nextCountdownEl) nextCountdownEl.textContent = clockStr;
     if (nextRelEl) nextRelEl.textContent = nextEtaMin > 0 ? `+${nextEtaMin}m from now` : "Approaching now";
+
+    // Scheduled ETA
+    if (nextStop.scheduled_arrival) {
+      const schClock = new Date(nextStop.scheduled_arrival).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+      if (schedEtaEl) schedEtaEl.textContent = schClock;
+      if (schedEtaSubEl) schedEtaSubEl.textContent = `${nextStop.station_code || "Next"} Timetable`;
+    } else {
+      if (schedEtaEl) schedEtaEl.textContent = "--:--";
+      if (schedEtaSubEl) schedEtaSubEl.textContent = "Schedule unavailable";
+    }
+
+    // Variance vs Schedule
+    const predDelayMin = Math.round(data.predicted_delay_minutes ?? 0);
+    if (etaVarianceEl) {
+      if (predDelayMin <= 0) {
+        etaVarianceEl.textContent = predDelayMin === 0 ? "0 min" : `${predDelayMin} min`;
+        etaVarianceEl.className = "text-xl lg:text-2xl font-extrabold font-mono text-emerald-400";
+      } else {
+        etaVarianceEl.textContent = `+${predDelayMin} min`;
+        etaVarianceEl.className = `text-xl lg:text-2xl font-extrabold font-mono ${predDelayMin > 60 ? "text-rose-400" : predDelayMin > 15 ? "text-amber-400" : "text-yellow-400"}`;
+      }
+    }
+
+    if (etaVarianceSubEl) {
+      const deltaFromCurr = Math.round((data.predicted_delay_minutes ?? 0) - (data.current_delay_minutes ?? 0));
+      if (deltaFromCurr < 0) {
+        etaVarianceSubEl.textContent = `Recovering ${Math.abs(deltaFromCurr)}m on segment`;
+        etaVarianceSubEl.className = "text-[10px] text-emerald-400 font-semibold mt-0.5 truncate";
+      } else if (deltaFromCurr > 0) {
+        etaVarianceSubEl.textContent = `+${deltaFromCurr}m delay added on segment`;
+        etaVarianceSubEl.className = "text-[10px] text-amber-400 font-semibold mt-0.5 truncate";
+      } else {
+        etaVarianceSubEl.textContent = "Delay constant on segment";
+        etaVarianceSubEl.className = "text-[10px] text-slate-400 mt-0.5 truncate";
+      }
+    }
   } else {
     if (nextCountdownEl) nextCountdownEl.textContent = "ARRIVED";
     if (nextRelEl) nextRelEl.textContent = "Terminus reached";
+    if (schedEtaEl) schedEtaEl.textContent = "--:--";
+    if (schedEtaSubEl) schedEtaSubEl.textContent = "Journey completed";
+    if (etaVarianceEl) {
+      etaVarianceEl.textContent = "Complete";
+      etaVarianceEl.className = "text-xl lg:text-2xl font-extrabold font-mono text-emerald-400";
+    }
+    if (etaVarianceSubEl) etaVarianceSubEl.textContent = "All stops finished";
   }
 
   // Segment Progress Bar
@@ -525,34 +715,74 @@ function renderPredictionExplanation(data) {
   const factors = document.getElementById("prediction-factors");
   const weatherNote = document.getElementById("prediction-weather-note");
 
+  const currDelay = Math.round(data.current_delay_minutes || 0);
+  const predDelay = Math.round(data.predicted_delay_minutes || 0);
+  const netDelta = predDelay - currDelay;
+  const deltaNote = netDelta < 0
+    ? `projects a ${Math.abs(netDelta)}m recovery across this segment.`
+    : netDelta > 0
+    ? `projects +${netDelta}m delay accumulation based on empirical track behavior.`
+    : `projects delay preservation (0m net segment variance).`;
+
+  const histCount = data.historical_statistics?.count || 0;
+  const histMedian = data.historical_statistics?.median ?? "--";
+
   if (summary) {
-    summary.textContent = explanation.summary || "Explanation unavailable for this prediction.";
+    summary.innerHTML = `<span class="text-white font-semibold">Production Champion V2 (13 Features):</span> Baseline starts at <b class="text-amber-400">${currDelay} min</b> current delay. Factoring <b class="text-white">${histCount.toLocaleString()}</b> historical segment runs (median: ${histMedian}m) and ${Math.round(data.scheduled_segment_minutes || 0)}m scheduled transit, the model ${deltaNote}`;
   }
 
   if (freshnessElement) {
     const live = freshness.provider_mode === "LIVE";
-    freshnessElement.textContent = live ? "● Live rail telemetry • Updated just now" : "● Latest reported telemetry • Updated just now";
+    freshnessElement.textContent = live ? "● Live rail telemetry • Updated just now" : "● Reported telemetry (Replay) • Updated just now";
     freshnessElement.className = `text-xs font-mono px-2 py-1 rounded border ${live ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : "bg-amber-500/10 border-amber-500/30 text-amber-400"}`;
   }
 
   if (factors) {
     factors.replaceChildren();
+    const factorDescriptions = {
+      "Current delay": "Anchor arrival delay at active halt",
+      "Historical segment median": "Median running variance on this segment",
+      "Previous station delay": "In-transit arrival headway buffer",
+      "Scheduled segment": "Timetable scheduled running duration",
+      "Historical sample size": "Empirical observation count depth",
+    };
+
     (explanation.factors || []).forEach((factor) => {
       const item = document.createElement("div");
-      item.className = "rounded-lg bg-cyber-bg/70 border border-white/5 p-2";
+      item.className = "rounded-xl bg-cyber-bg/80 border border-white/10 p-2.5 flex flex-col justify-between";
       const label = document.createElement("div");
-      label.className = "text-[10px] text-slate-500 uppercase";
+      label.className = "text-[10px] text-slate-400 uppercase font-mono tracking-wider";
       label.textContent = factor.name;
       const value = document.createElement("div");
-      value.className = "text-sm font-mono text-slate-200";
+      value.className = "text-base font-mono font-bold text-slate-100 mt-1";
       value.textContent = `${factor.value} ${factor.unit || ""}`;
-      item.append(label, value);
+      const desc = document.createElement("div");
+      desc.className = "text-[9px] text-slate-500 mt-0.5 leading-tight";
+      desc.textContent = factorDescriptions[factor.name] || "Feature input";
+      item.append(label, value, desc);
       factors.appendChild(item);
     });
   }
 
   if (weatherNote) {
-    weatherNote.textContent = explanation.weather_note || "Weather is displayed for context and is not currently a live-model feature.";
+    weatherNote.innerHTML = `🛡️ <b class="text-slate-300">Production Feature Boundary:</b> Champion V2 LightGBM operates strictly on physical running features (historical segment distributions, headway delays, scheduled segment runtimes). Weather telemetry is ingested purely for passenger situational awareness and is excluded from production loss functions to guarantee zero historical data leakage.`;
+  }
+
+  // Update Weather-Aware Research (Candidate C) status badges
+  const weather = data.weather || {};
+  const fogStatusEl = document.getElementById("weather-fog-status");
+  const visStatusEl = document.getElementById("weather-vis-status");
+  if (fogStatusEl) {
+    const code = weather.weather_code;
+    const isFoggy = code === 45 || code === 48;
+    fogStatusEl.innerHTML = isFoggy
+      ? `Fog: <span class="text-amber-400 font-bold">Adverse Fog Detected</span>`
+      : `Fog: <span class="text-emerald-400 font-bold">Normal Visibility</span>`;
+  }
+  if (visStatusEl) {
+    visStatusEl.innerHTML = weather.available
+      ? `Telemetry: <span class="text-cyber-teal font-bold">${weather.temperature_c ?? 26}&deg;C &bull; Open-Meteo</span>`
+      : `Telemetry: <span class="text-slate-400 font-bold">Default Weather</span>`;
   }
 }
 
@@ -604,6 +834,113 @@ function renderMapRoute(data) {
       routePolyline = null;
       renderedRouteSignature = null;
     }
+  }
+
+  // Station Markers Rendering (Previous, Current, Next, Upcoming)
+  const trainNumber = Number(data.train);
+  const popularStops = POPULAR_TRAIN_STOPS[trainNumber];
+  const upcomingMap = new Map((data.upcoming_stations || []).map((s) => [s.station_code, s]));
+  const currentCode = data.current_station;
+  const nextCode = data.next_station;
+
+  if (popularStops && popularStops.length > 0) {
+    const currIdx = popularStops.findIndex((s) => s.code === currentCode);
+
+    popularStops.forEach((stop, idx) => {
+      let markerClass = "station-dot";
+      let statusLabel = "Upcoming Scheduled Halt";
+      let popupClass = "text-cyber-teal";
+      let extraInfo = "";
+
+      const isPassed = currIdx !== -1 && idx < currIdx;
+      const isCurrent = stop.code === currentCode;
+      const isNext = stop.code === nextCode;
+      const upcomingData = upcomingMap.get(stop.code);
+
+      if (isCurrent) {
+        markerClass = "station-dot station-dot-active";
+        statusLabel = "Current Station Halt";
+        popupClass = "text-emerald-400";
+        extraInfo = `Current Delay: <b>${Math.round(data.current_delay_minutes || 0)} mins</b>`;
+      } else if (isNext) {
+        markerClass = "station-dot station-dot-next";
+        statusLabel = "Immediate Next Station";
+        popupClass = "text-amber-400";
+        if (upcomingData) {
+          const etaText = upcomingData.predicted_arrival
+            ? new Date(upcomingData.predicted_arrival).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })
+            : "--:--";
+          const delayMin = Math.round(upcomingData.predicted_delay_minutes || 0);
+          extraInfo = `AI ETA: <b>${etaText}</b> (+${delayMin}m delay)`;
+        }
+      } else if (isPassed) {
+        markerClass = "station-dot station-dot-passed";
+        statusLabel = "Passed Station";
+        popupClass = "text-slate-400";
+        extraInfo = "Completed halt";
+      } else if (upcomingData) {
+        const etaText = upcomingData.predicted_arrival
+          ? new Date(upcomingData.predicted_arrival).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })
+          : "--:--";
+        extraInfo = `AI ETA: <b>${etaText}</b> &bull; Hop ${upcomingData.cascade_hop || idx - currIdx}`;
+      }
+
+      const icon = L.divIcon({
+        className: "station-dot-wrapper",
+        html: `<div class="${markerClass}" title="${escapeHtml(stop.name)} (${escapeHtml(stop.code)})"></div>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+      });
+
+      const marker = L.marker([stop.lat, stop.lng], { icon: icon }).addTo(stationMarkersLayer);
+      const popup = `
+        <div class="p-2.5 font-sans text-xs">
+          <div class="font-bold text-white text-sm">${escapeHtml(stop.name)} <span class="font-mono text-slate-400 text-xs">(${escapeHtml(stop.code)})</span></div>
+          <div class="${popupClass} font-semibold mt-1">${statusLabel}</div>
+          ${extraInfo ? `<div class="text-slate-300 mt-1">${extraInfo}</div>` : ""}
+        </div>
+      `;
+      marker.bindPopup(popup);
+      marker.bindTooltip(`<b>${escapeHtml(stop.code)}</b>: ${escapeHtml(stop.name)}`, { direction: "top", offset: [0, -8], opacity: 0.9 });
+    });
+  } else if (data.upcoming_stations && data.upcoming_stations.length > 0) {
+    // Arbitrary train: render from upcoming_stations and stationCoordinatesCatalog
+    if (currentCode && lat && lon) {
+      const currIcon = L.divIcon({
+        className: "station-dot-wrapper",
+        html: `<div class="station-dot station-dot-active" title="${escapeHtml(data.current_station_name || currentCode)}"></div>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+      });
+      const currMarker = L.marker([lat, lon], { icon: currIcon }).addTo(stationMarkersLayer);
+      currMarker.bindPopup(`<div class="p-2.5 font-sans text-xs"><b class="text-white text-sm">${escapeHtml(data.current_station_name || currentCode)}</b><div class="text-emerald-400 font-semibold mt-1">Current Station Halt</div><div class="text-slate-300 mt-1">Delay: <b>${Math.round(data.current_delay_minutes || 0)} mins</b></div></div>`);
+    }
+
+    data.upcoming_stations.forEach((stop) => {
+      const coords = stationCoordinatesCatalog[stop.station_code];
+      if (!coords) return;
+      const isNext = stop.station_code === nextCode;
+      const markerClass = isNext ? "station-dot station-dot-next" : "station-dot";
+      const icon = L.divIcon({
+        className: "station-dot-wrapper",
+        html: `<div class="${markerClass}"></div>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+      });
+      const sMarker = L.marker([coords[0], coords[1]], { icon: icon }).addTo(stationMarkersLayer);
+      const etaText = stop.predicted_arrival
+        ? new Date(stop.predicted_arrival).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true })
+        : "--:--";
+      const popup = `
+        <div class="p-2.5 font-sans text-xs">
+          <div class="font-bold text-white text-sm">${escapeHtml(stop.station_name || coords[2])} <span class="font-mono text-slate-400 text-xs">(${escapeHtml(stop.station_code)})</span></div>
+          <div class="${isNext ? "text-amber-400" : "text-cyber-teal"} font-semibold mt-1">${isNext ? "Immediate Next Station" : "Upcoming Scheduled Halt"}</div>
+          <div class="text-slate-300 mt-1">AI ETA: <b>${etaText}</b> &bull; Delay: ${Math.round(stop.predicted_delay_minutes || 0)}m</div>
+        </div>
+      `;
+      sMarker.bindPopup(popup);
+      sMarker.bindTooltip(`<b>${escapeHtml(stop.station_code)}</b>: ${escapeHtml(stop.station_name || coords[2])}`, { direction: "top", offset: [0, -8], opacity: 0.9 });
+    });
   }
 
   // Train Marker
@@ -661,7 +998,7 @@ function updateTrainLabelVisibility() {
   }
 }
 
-// Render Railway-Style Vertical Timeline
+// Render Railway-Style Cascading Stations Timeline
 function renderStationsTimeline(data) {
   const upcomingStations = data.upcoming_stations || [];
   const container = document.getElementById("stations-timeline-container");
@@ -671,30 +1008,41 @@ function renderStationsTimeline(data) {
   container.innerHTML = "";
   if (countBadge) countBadge.textContent = `${upcomingStations.length} halts`;
 
-  // 1. Current Station as Starting Node
+  // 1. Current Station Anchor
   if (data.current_station) {
     const currentItem = document.createElement("div");
     currentItem.className = "timeline-item";
     const currDelay = Math.round(data.current_delay_minutes || 0);
     const delayBadge = currDelay <= 0
-      ? '<span class="text-xs font-mono font-bold text-emerald-400">On Time</span>'
-      : `<span class="text-xs font-mono font-bold text-amber-400">+${currDelay} min delay</span>`;
+      ? '<span class="text-xs font-mono font-bold text-emerald-400">On Time / Schedule</span>'
+      : `<span class="text-xs font-mono font-bold ${currDelay > 60 ? "text-rose-400" : currDelay > 15 ? "text-amber-400" : "text-yellow-400"}">+${currDelay} min delay</span>`;
 
     currentItem.innerHTML = `
       <div class="timeline-dot timeline-dot-current">
         <div class="timeline-dot-inner"></div>
       </div>
-      <div class="p-3 rounded-xl bg-cyber-teal/10 border border-cyber-teal/40">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span class="font-bold text-sm text-white">${escapeHtml(data.current_station_name || data.current_station)}</span>
-            <span class="text-xs font-mono text-cyber-teal font-bold px-1.5 py-0.5 rounded bg-cyber-teal/20">${escapeHtml(data.current_station)}</span>
-            <span class="text-[10px] uppercase font-bold text-cyber-teal bg-cyber-teal/20 px-2 py-0.5 rounded-full border border-cyber-teal/30">Current Halt</span>
+      <div class="p-3.5 rounded-xl bg-gradient-to-r from-emerald-950/40 via-cyber-surface/70 to-cyber-bg border border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.12)]">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-base text-white">${escapeHtml(data.current_station_name || data.current_station)}</span>
+              <span class="text-xs font-mono text-emerald-400 font-bold px-1.5 py-0.5 rounded bg-emerald-500/20">${escapeHtml(data.current_station)}</span>
+              <span class="text-[10px] uppercase font-bold text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/40 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span> Current Station
+              </span>
+            </div>
+            <div class="text-xs text-slate-400 mt-1 font-mono">
+              In-Transit Route Anchor &bull; Progress: <b>${Math.round((data.segment_progress || 0) * 100)}%</b>
+            </div>
           </div>
-          <div class="font-mono text-xs">
+          <div class="text-right font-mono">
             ${delayBadge}
+            <div class="text-[10px] text-slate-400 mt-0.5">Reported Anchor Delay</div>
           </div>
         </div>
+      </div>
+      <div class="timeline-cascade-arrow">
+        <svg class="w-4 h-4 text-cyber-teal/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
       </div>
     `;
     container.appendChild(currentItem);
@@ -708,9 +1056,12 @@ function renderStationsTimeline(data) {
       <div class="timeline-dot">
         <div class="timeline-dot-inner"></div>
       </div>
-      <div class="p-4 text-center rounded-xl bg-cyber-bg/60 border border-white/5">
-        <div class="font-bold text-sm text-slate-300">ARRIVED &bull; Terminus Reached</div>
-        <p class="text-xs text-slate-500 mt-1">This train has completed all scheduled stops.</p>
+      <div class="p-5 text-center rounded-xl bg-cyber-bg/80 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]">
+        <div class="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 mx-auto flex items-center justify-center mb-2">
+          <i data-lucide="check-circle" class="w-5 h-5"></i>
+        </div>
+        <div class="font-bold text-sm text-white">ARRIVED &bull; Final Terminus Reached</div>
+        <p class="text-xs text-slate-400 mt-1">Train #${escapeHtml(data.train)} has completed all scheduled halts on this route.</p>
       </div>
     `;
     container.appendChild(emptyItem);
@@ -720,6 +1071,7 @@ function renderStationsTimeline(data) {
   upcomingStations.forEach((stop, index) => {
     const isNext = index === 0;
     const isTerminus = index === upcomingStations.length - 1;
+    const hopNumber = stop.cascade_hop || index + 1;
     const item = document.createElement("div");
     item.className = "timeline-item";
 
@@ -732,43 +1084,72 @@ function renderStationsTimeline(data) {
 
     const etaMin = Math.round(stop.eta_minutes_from_now);
     const etaText = etaMin > 0 ? `+${etaMin}m from now` : "Approaching now";
+    const predDelay = Math.round(stop.predicted_delay_minutes ?? 0);
+    const delayColor = predDelay <= 0 ? "text-emerald-400" : predDelay > 60 ? "text-rose-400" : predDelay > 15 ? "text-amber-400" : "text-yellow-400";
+
+    const hopLabel = isNext
+      ? `<span class="text-[10px] uppercase font-bold text-amber-400 bg-amber-400/15 px-2 py-0.5 rounded-full border border-amber-400/30 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Next Station (Hop 1)</span>`
+      : isTerminus
+      ? `<span class="text-[10px] uppercase font-mono text-purple-300 bg-purple-500/15 px-2 py-0.5 rounded-full border border-purple-500/30">Station +${index + 1} &bull; Final Terminus</span>`
+      : hopNumber <= 5
+      ? `<span class="text-[10px] uppercase font-mono text-cyber-teal bg-cyber-teal/10 px-2 py-0.5 rounded-full border border-cyber-teal/30">Station +${index + 1} (Hop ${hopNumber})</span>`
+      : `<span class="text-[10px] uppercase font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">Station +${index + 1} (Downstream)</span>`;
+
+    const cardBg = isNext
+      ? "bg-gradient-to-r from-amber-950/30 via-cyber-surface/80 to-cyber-bg border-amber-500/50 shadow-[0_0_20px_rgba(245,158,11,0.12)]"
+      : "bg-cyber-bg/75 border-white/10 hover:border-cyber-teal/30";
+
+    const isLast = index === upcomingStations.length - 1;
 
     item.innerHTML = `
       <div class="timeline-dot ${isNext ? "timeline-dot-next" : ""}">
         <div class="timeline-dot-inner"></div>
       </div>
-      <div class="p-3.5 rounded-xl border transition-all ${
-        isNext
-          ? "bg-cyber-surface/90 border-amber-500/40 shadow-lg shadow-amber-500/5"
-          : "bg-cyber-bg/70 border-white/5 hover:border-white/20"
-      }">
+      <div class="p-3.5 rounded-xl border transition-all ${cardBg}">
+        <!-- Station Header -->
         <div class="flex items-start justify-between gap-3">
           <div>
-            <div class="flex items-center gap-2">
-              <span class="font-bold text-sm text-white">${escapeHtml(stop.station_name || stop.station_code)}</span>
-              <span class="text-xs font-mono text-slate-400 px-1.5 py-0.2 rounded bg-white/5">${escapeHtml(stop.station_code)}</span>
-              ${isNext ? '<span class="text-[10px] uppercase font-bold text-amber-400 bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20">Next Stop</span>' : ""}
-              ${isTerminus ? '<span class="text-[10px] uppercase font-mono text-slate-400 bg-slate-700/50 px-1.5 py-0.5 rounded">Terminus</span>' : ""}
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="font-bold text-sm lg:text-base text-white">${escapeHtml(stop.station_name || stop.station_code)}</span>
+              <span class="text-xs font-mono text-slate-300 px-1.5 py-0.5 rounded bg-white/10 font-bold">${escapeHtml(stop.station_code)}</span>
+              ${hopLabel}
             </div>
             <div class="text-xs text-slate-400 mt-1 flex items-center gap-3 font-mono">
               <span>Dist: ${stop.distance_km != null ? stop.distance_km + " km" : "--"}</span>
-              ${stop.platform ? `<span>Platform: ${escapeHtml(stop.platform)}</span>` : `<span>${stop.is_halt ? "Scheduled Halt" : "Through"}</span>`}
+              ${stop.platform ? `<span>Platform: ${escapeHtml(stop.platform)}</span>` : `<span>${stop.is_halt ? "Halt" : "Pass-through"}</span>`}
             </div>
           </div>
-
           <div class="text-right font-mono">
-            <div class="text-sm font-bold ${isNext ? "text-amber-400" : "text-cyber-teal"}">ETA ${predArr}</div>
-            <div class="text-[11px] text-slate-400 line-through">Sch: ${schArr}</div>
+            <div class="text-sm lg:text-base font-extrabold ${isNext ? "text-amber-400" : "text-cyber-teal"}">ETA ${predArr}</div>
+            <div class="text-xs text-slate-400">Sch: ${schArr}</div>
           </div>
         </div>
 
+        <!-- 3-Column Timetable Comparison Micro-Grid -->
+        <div class="grid grid-cols-3 gap-2 mt-3 pt-2.5 border-t border-white/10 text-center font-mono">
+          <div class="bg-black/30 p-2 rounded-lg border border-white/5">
+            <div class="text-[9px] uppercase text-slate-400">Scheduled Arrival</div>
+            <div class="text-xs font-bold text-slate-200 mt-0.5">${schArr}</div>
+          </div>
+          <div class="${isNext ? "bg-amber-500/10 border border-amber-500/30" : "bg-cyan-950/30 border border-cyan-500/20"} p-2 rounded-lg">
+            <div class="text-[9px] uppercase ${isNext ? "text-amber-400" : "text-cyber-teal"} font-bold">Predicted Arrival</div>
+            <div class="text-xs font-extrabold ${isNext ? "text-amber-300" : "text-cyan-300"} mt-0.5">${predArr}</div>
+          </div>
+          <div class="bg-black/30 p-2 rounded-lg border border-white/5">
+            <div class="text-[9px] uppercase text-slate-400">Predicted Delay</div>
+            <div class="text-xs font-bold ${delayColor} mt-0.5">${predDelay <= 0 ? "On Time" : `+${predDelay} min`}</div>
+          </div>
+        </div>
+
+        <!-- Cascade Method Footer -->
         <div class="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between text-[11px] font-mono text-slate-400">
-          <span>Arrival: <b>${etaText}</b></span>
-          <span class="${stop.is_independent_ml_prediction ? "text-cyber-teal font-semibold" : "text-slate-400"}">
-            ${stop.is_independent_ml_prediction ? `⚡ Autoregressive Hop ${stop.cascade_hop || index + 1}` : "Downstream Cascaded"}
+          <span class="${isNext ? "text-amber-300/90 font-semibold" : ""}">Arriving: <b>${etaText}</b></span>
+          <span class="${hopNumber <= 5 ? "text-cyber-teal font-semibold" : "text-slate-400"} flex items-center gap-1">
+            ${hopNumber <= 5 ? `⚡ Autoregressive Cascade (Hop ${hopNumber})` : "⏱️ Downstream Cascaded Runtime"}
           </span>
         </div>
       </div>
+      ${!isLast ? '<div class="timeline-cascade-arrow"><svg class="w-3.5 h-3.5 text-cyber-teal/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg></div>' : ""}
     `;
 
     container.appendChild(item);

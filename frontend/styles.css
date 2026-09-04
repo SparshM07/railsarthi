@@ -210,6 +210,13 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   animation: pulse 1.5s infinite;
 }
 
+.station-dot-passed {
+  background: #334155 !important;
+  border-color: #64748b !important;
+  box-shadow: none !important;
+  opacity: 0.75;
+}
+
 /* Railway Timeline Styling */
 .railway-timeline {
   position: relative;
@@ -269,4 +276,24 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   border-color: #f59e0b;
   background: #f59e0b;
   box-shadow: 0 0 12px #f59e0b;
+}
+
+/* Skeleton Loading Shimmer */
+@keyframes shimmer {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+.skeleton-shimmer {
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Timeline Cascade Connector Arrow */
+.timeline-cascade-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0;
+  color: rgba(0, 242, 254, 0.45);
 }

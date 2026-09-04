@@ -1,0 +1,400 @@
+{
+  "v2_overall": {
+    "rows": 246459,
+    "mae": 8.43715521943989,
+    "rmse": 26.51840815207557,
+    "r2": 0.8809008828798739,
+    "mean_error": -0.0927309005390052,
+    "median_absolute_error": 3.6045565223686786,
+    "p90_absolute_error": 16.94488440485358,
+    "p95_absolute_error": 27.833584827049876,
+    "within_5": 60.91844891036643,
+    "within_10": 80.42919917714508,
+    "within_15": 88.26985421510271,
+    "within_30": 95.5258278253178,
+    "within_60": 98.44477174702486
+  },
+  "v3_overall": {
+    "rows": 246459,
+    "mae": 8.460561577414254,
+    "rmse": 26.635703914448616,
+    "r2": 0.8798449584671625,
+    "mean_error": -0.1109005303743856,
+    "median_absolute_error": 3.6336445933061245,
+    "p90_absolute_error": 16.979456413714434,
+    "p95_absolute_error": 27.95221753366303,
+    "within_5": 60.84257422127008,
+    "within_10": 80.3399348370317,
+    "within_15": 88.19641400800946,
+    "within_30": 95.49296231827607,
+    "within_60": 98.43746830101558
+  },
+  "v2_weather_available": {
+    "rows": 130668,
+    "mae": 8.40423740013232,
+    "rmse": 26.251429964808747,
+    "r2": 0.8679345698135423,
+    "mean_error": -0.10911687599085426,
+    "median_absolute_error": 3.6162782692907216,
+    "p90_absolute_error": 16.716053113607465,
+    "p95_absolute_error": 27.520653501038595,
+    "within_5": 60.841981204273424,
+    "within_10": 80.58667768696239,
+    "within_15": 88.45088315425352,
+    "within_30": 95.587289925613,
+    "within_60": 98.44185263415679
+  },
+  "v3_weather_available": {
+    "rows": 130668,
+    "mae": 8.445569761426826,
+    "rmse": 26.33127949446409,
+    "r2": 0.8671299355117682,
+    "mean_error": -0.07748866777919096,
+    "median_absolute_error": 3.66199186474616,
+    "p90_absolute_error": 16.811701068055925,
+    "p95_absolute_error": 27.721985358544572,
+    "within_5": 60.610861113662104,
+    "within_10": 80.4672911500903,
+    "within_15": 88.36746563810574,
+    "within_30": 95.53601493862307,
+    "within_60": 98.42348547463801
+  },
+  "v2_weather_unavailable": {
+    "rows": 115791,
+    "mae": 8.47430236916035,
+    "rmse": 26.81649613002553,
+    "r2": 0.8922653136475049,
+    "mean_error": -0.0742396305755174,
+    "median_absolute_error": 3.5899516876860957,
+    "p90_absolute_error": 17.181769457504227,
+    "p95_absolute_error": 28.229602370130813,
+    "within_5": 61.0047413011374,
+    "within_10": 80.25148759402717,
+    "within_15": 88.06556640844279,
+    "within_30": 95.45646898290886,
+    "within_60": 98.44806591185844
+  },
+  "v3_weather_unavailable": {
+    "rows": 115791,
+    "mae": 8.477479564230544,
+    "rmse": 26.97511554525399,
+    "r2": 0.8909870442584346,
+    "mean_error": -0.14860519879929684,
+    "median_absolute_error": 3.6019046593213635,
+    "p90_absolute_error": 17.174937406300447,
+    "p95_absolute_error": 28.2022693818857,
+    "within_5": 61.10405817377862,
+    "within_10": 80.19621559533988,
+    "within_15": 88.0033854099196,
+    "within_30": 95.44437823319602,
+    "within_60": 98.45324766173536
+  },
+  "ablation_results": {
+    "Model C (Vis & Fog)": {
+      "rows": 246459,
+      "mae": 8.439374769647522,
+      "rmse": 26.584313655330053,
+      "r2": 0.8803081594388878,
+      "mean_error": -0.0924854173336735,
+      "median_absolute_error": 3.622800911266662,
+      "p90_absolute_error": 16.988762418293483,
+      "p95_absolute_error": 27.890642200285026,
+      "within_5": 60.784958147196896,
+      "within_10": 80.39836240510591,
+      "within_15": 88.20168871901615,
+      "within_30": 95.51771288530749,
+      "within_60": 98.43259933700939
+    },
+    "Model D (Thermo & Wind)": {
+      "rows": 246459,
+      "mae": 8.342696597008173,
+      "rmse": 26.648913264480992,
+      "r2": 0.8797257527899518,
+      "mean_error": -0.09940612376301461,
+      "median_absolute_error": 3.5131181354521175,
+      "p90_absolute_error": 16.842390543208207,
+      "p95_absolute_error": 27.720725772931072,
+      "within_5": 61.63986707728263,
+      "within_10": 80.76353470556968,
+      "within_15": 88.32868753017743,
+      "within_30": 95.52501633131676,
+      "within_60": 98.43057060200682
+    },
+    "Model E (Precipitation)": {
+      "rows": 246459,
+      "mae": 8.430087332945948,
+      "rmse": 26.61186212087428,
+      "r2": 0.8800599653312731,
+      "mean_error": -0.10475997373505191,
+      "median_absolute_error": 3.5832566178457093,
+      "p90_absolute_error": 17.03958095888116,
+      "p95_absolute_error": 27.927293301865824,
+      "within_5": 60.883960415322626,
+      "within_10": 80.34155782503379,
+      "within_15": 88.16679447697183,
+      "within_30": 95.50270024628843,
+      "within_60": 98.44112002402022
+    }
+  },
+  "paired_statistics": {
+    "mean_mae_difference": -0.02340635797436148,
+    "median_difference": 0.0,
+    "ci_95": [
+      -0.03435927085695739,
+      -0.012453445091765566
+    ],
+    "v3_wins_count": 119174,
+    "v3_wins_pct": 48.35449303941021,
+    "v2_wins_count": 121236,
+    "v2_wins_pct": 49.19114335447275,
+    "ties_count": 6049,
+    "ties_pct": 2.4543636061170417
+  },
+  "feature_importances": [
+    {
+      "feature": "current_arr_delay",
+      "type": "Baseline V2",
+      "gain": 70063287999.60352,
+      "gain_pct": 75.74991442960237,
+      "split_count": 3449
+    },
+    {
+      "feature": "previous_train_delay",
+      "type": "Baseline V2",
+      "gain": 14884160990.125,
+      "gain_pct": 16.092221098227288,
+      "split_count": 3380
+    },
+    {
+      "feature": "past_segment_std",
+      "type": "Baseline V2",
+      "gain": 1770464837.069336,
+      "gain_pct": 1.9141630907955824,
+      "split_count": 1509
+    },
+    {
+      "feature": "train",
+      "type": "Baseline V2",
+      "gain": 1189758491.9248047,
+      "gain_pct": 1.2863242152681549,
+      "split_count": 3833
+    },
+    {
+      "feature": "next_station",
+      "type": "Baseline V2",
+      "gain": 1113249878.834961,
+      "gain_pct": 1.2036058464882595,
+      "split_count": 3656
+    },
+    {
+      "feature": "station",
+      "type": "Baseline V2",
+      "gain": 946030169.1738281,
+      "gain_pct": 1.0228138931068331,
+      "split_count": 3699
+    },
+    {
+      "feature": "past_segment_median",
+      "type": "Baseline V2",
+      "gain": 623754204.28125,
+      "gain_pct": 0.674380677076942,
+      "split_count": 882
+    },
+    {
+      "feature": "past_segment_mean",
+      "type": "Baseline V2",
+      "gain": 554168431.1953125,
+      "gain_pct": 0.599147034647724,
+      "split_count": 1066
+    },
+    {
+      "feature": "scheduled_segment_minutes",
+      "type": "Baseline V2",
+      "gain": 339652582.6855469,
+      "gain_pct": 0.36722019204079054,
+      "split_count": 1363
+    },
+    {
+      "feature": "past_segment_count",
+      "type": "Baseline V2",
+      "gain": 171564203.5234375,
+      "gain_pct": 0.18548906434646373,
+      "split_count": 653
+    },
+    {
+      "feature": "day_of_week",
+      "type": "Baseline V2",
+      "gain": 157036737.51464844,
+      "gain_pct": 0.1697824890705367,
+      "split_count": 428
+    },
+    {
+      "feature": "station_distance_km",
+      "type": "Weather",
+      "gain": 133146646.6171875,
+      "gain_pct": 0.14395337952020656,
+      "split_count": 680
+    },
+    {
+      "feature": "relative_humidity",
+      "type": "Weather",
+      "gain": 128292367.01074219,
+      "gain_pct": 0.13870510649014728,
+      "split_count": 618
+    },
+    {
+      "feature": "temperature_c",
+      "type": "Weather",
+      "gain": 88103061.21484375,
+      "gain_pct": 0.09525387030149371,
+      "split_count": 436
+    },
+    {
+      "feature": "weather_observation_age_minutes",
+      "type": "Weather",
+      "gain": 87885028.05664062,
+      "gain_pct": 0.09501814066978136,
+      "split_count": 396
+    },
+    {
+      "feature": "wind_speed_mps",
+      "type": "Weather",
+      "gain": 69065474.29785156,
+      "gain_pct": 0.07467111403809315,
+      "split_count": 364
+    },
+    {
+      "feature": "dewpoint_c",
+      "type": "Weather",
+      "gain": 65575578.458984375,
+      "gain_pct": 0.0708979638090615,
+      "split_count": 475
+    },
+    {
+      "feature": "visibility_m",
+      "type": "Weather",
+      "gain": 39714126.62792969,
+      "gain_pct": 0.0429374895127544,
+      "split_count": 198
+    },
+    {
+      "feature": "precipitation_accumulation_mm",
+      "type": "Weather",
+      "gain": 37615881.69140625,
+      "gain_pct": 0.04066894233302603,
+      "split_count": 199
+    },
+    {
+      "feature": "dewpoint_depression_c",
+      "type": "Weather",
+      "gain": 19017766.103515625,
+      "gain_pct": 0.020561326710668407,
+      "split_count": 119
+    },
+    {
+      "feature": "fog_flag",
+      "type": "Weather",
+      "gain": 8756048.189453125,
+      "gain_pct": 0.009466725299793272,
+      "split_count": 50
+    },
+    {
+      "feature": "precipitation_available_flag",
+      "type": "Weather",
+      "gain": 1233538.3984375,
+      "gain_pct": 0.001333657480188457,
+      "split_count": 4
+    },
+    {
+      "feature": "is_weekend",
+      "type": "Baseline V2",
+      "gain": 1030115.19921875,
+      "gain_pct": 0.0011137236121989405,
+      "split_count": 7
+    },
+    {
+      "feature": "weather_available",
+      "type": "Weather",
+      "gain": 286581.1015625,
+      "gain_pct": 0.000309841209859055,
+      "split_count": 3
+    },
+    {
+      "feature": "wind_available",
+      "type": "Weather",
+      "gain": 43183.3984375,
+      "gain_pct": 4.6688341780913295e-05,
+      "split_count": 1
+    },
+    {
+      "feature": "month",
+      "type": "Baseline V2",
+      "gain": 0.0,
+      "gain_pct": 0.0,
+      "split_count": 0
+    },
+    {
+      "feature": "visibility_available",
+      "type": "Weather",
+      "gain": 0.0,
+      "gain_pct": 0.0,
+      "split_count": 0
+    },
+    {
+      "feature": "visibility_lt_1000m",
+      "type": "Weather",
+      "gain": 0.0,
+      "gain_pct": 0.0,
+      "split_count": 0
+    },
+    {
+      "feature": "temperature_available",
+      "type": "Weather",
+      "gain": 0.0,
+      "gain_pct": 0.0,
+      "split_count": 0
+    },
+    {
+      "feature": "visibility_lt_200m",
+      "type": "Weather",
+      "gain": 0.0,
+      "gain_pct": 0.0,
+      "split_count": 0
+    },
+    {
+      "feature": "low_visibility_flag",
+      "type": "Weather",
+      "gain": 0.0,
+      "gain_pct": 0.0,
+      "split_count": 0
+    },
+    {
+      "feature": "visibility_lt_500m",
+      "type": "Weather",
+      "gain": 0.0,
+      "gain_pct": 0.0,
+      "split_count": 0
+    },
+    {
+      "feature": "fog_observation_available",
+      "type": "Weather",
+      "gain": 0.0,
+      "gain_pct": 0.0,
+      "split_count": 0
+    },
+    {
+      "feature": "humidity_available",
+      "type": "Weather",
+      "gain": 0.0,
+      "gain_pct": 0.0,
+      "split_count": 0
+    },
+    {
+      "feature": "dewpoint_available",
+      "type": "Weather",
+      "gain": 0.0,
+      "gain_pct": 0.0,
+      "split_count": 0
+    }
+  ]
+}
